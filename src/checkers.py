@@ -5,7 +5,7 @@ import httpx
 import socket
 import ssl
 
-from src.helpers import _format_issuer, _inspect_robots, _inspect_sitemap
+from src.helpers import _format_issuer, _inspect_robots, _inspect_sitemap, _strip_errno
 from src.schemas import HttpCheckResult, RobotsCheckResult, SslCheckResult, SitemapCheckResult
 
 
@@ -41,7 +41,7 @@ def check_http(url: str) -> HttpCheckResult:
     except httpx.RequestError as e:
         return HttpCheckResult(
             ok=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
 
@@ -84,31 +84,31 @@ def check_ssl(domain: str, port: int = 443) -> SslCheckResult:
     except socket.gaierror as e:
         return SslCheckResult(
             ok=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
     except ConnectionError as e:
         return SslCheckResult(
             ok=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
     except ssl.SSLCertVerificationError as e:
         return SslCheckResult(
             ok=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
     except ssl.SSLError as e:
         return SslCheckResult(
             ok=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
     except OSError as e:
         return SslCheckResult(
             ok=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
 
@@ -148,7 +148,7 @@ def check_robots(domain: str) -> RobotsCheckResult:
     except httpx.RequestError as e:
         return RobotsCheckResult(
             available=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )
 
 
@@ -193,5 +193,5 @@ def check_sitemap(domain: str) -> SitemapCheckResult:
     except httpx.RequestError as e:
         return SitemapCheckResult(
             available=False,
-            error=str(e),
+            error=_strip_errno(str(e)),
         )

@@ -8,6 +8,13 @@ ROBOTS_DIRECTIVES = {"user-agent", "allow", "disallow", "sitemap", "crawl-delay"
 SITEMAP_URL_FIELDS = {"loc", "lastmod", "changefreq", "priority"}
 SITEMAP_INDEX_FIELDS = {"loc", "lastmod"}
 CHANGEFREQ_VALUES = {"always", "hourly", "daily", "weekly", "monthly", "yearly", "never"}
+_ERRNO_PREFIX = re.compile(r"^\[Errno [+-]?\d+\]\s*")
+
+
+def _strip_errno(error: str) -> str:
+    """Убирает префикс [Errno число] из начала текста ошибки."""
+
+    return _ERRNO_PREFIX.sub("", error, count=1)
 
 
 def _format_issuer(certificate: dict) -> str | None:
