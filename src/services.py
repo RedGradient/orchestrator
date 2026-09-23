@@ -1,3 +1,5 @@
+import asyncio
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,7 +17,7 @@ async def make_checks(
 
     assert domain is not None
 
-    http_result = check_http(str(request.url))
+    http_result = await check_http(str(request.url))
 
     # Домен/сервер недоступен — остальные проверки выполнять бессмысленно
     if not http_result.ok:
@@ -27,9 +29,11 @@ async def make_checks(
         _save_check(session, response, trigger)
         return response
 
+    robots_result, sitemap_result = await asyncio.gather(
+        check_robots(domain),
+        check_sitemap(domain),
+    )
     ssl_result = check_ssl(domain)
-    robots_result = check_robots(domain)
-    sitemap_result = check_sitemap(domain)
 
     response = CheckResponse(
         url=request.url,

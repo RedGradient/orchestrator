@@ -16,16 +16,16 @@ def resolve_domain(domain: str) -> list[tuple[str, int]]:
     return [answer.address for answer in answers]
 
 
-def check_http(url: str) -> HttpCheckResult:
+async def check_http(url: str) -> HttpCheckResult:
     """Возвращает результат HTTP запроса по переданному URL"""
 
     try:
-        response = httpx.get(
-            url,
+        async with httpx.AsyncClient(
             timeout=10,
             follow_redirects=True,
             verify=False,
-        )
+        ) as client:
+            response = await client.get(url)
 
         return HttpCheckResult(
             ok=True,
@@ -114,18 +114,18 @@ def check_ssl(domain: str, port: int = 443) -> SslCheckResult:
 
 
 
-def check_robots(domain: str) -> RobotsCheckResult:
+async def check_robots(domain: str) -> RobotsCheckResult:
     """Загружает robots.txt домена и проверяет, доступен ли файл и правильно ли он составлен."""
 
     url = f"https://{domain}/robots.txt"
 
     try:
-        response = httpx.get(
-            url,
+        async with httpx.AsyncClient(
             timeout=10,
             follow_redirects=True,
             verify=False,
-        )
+        ) as client:
+            response = await client.get(url)
 
         if response.status_code == 200:
             valid, errors, warnings, sitemaps = _inspect_robots(response.text)
@@ -154,18 +154,18 @@ def check_robots(domain: str) -> RobotsCheckResult:
         )
 
 
-def check_sitemap(domain: str) -> SitemapCheckResult:
+async def check_sitemap(domain: str) -> SitemapCheckResult:
     """Загружает sitemap.xml домена и проверяет, доступен ли файл и правильно ли он составлен."""
 
     url = f"https://{domain}/sitemap.xml"
 
     try:
-        response = httpx.get(
-            url,
+        async with httpx.AsyncClient(
             timeout=10,
             follow_redirects=True,
             verify=False,
-        )
+        ) as client:
+            response = await client.get(url)
 
         if response.status_code != 200:
             return SitemapCheckResult(
