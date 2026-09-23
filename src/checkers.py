@@ -24,6 +24,7 @@ def check_http(url: str) -> HttpCheckResult:
             url,
             timeout=10,
             follow_redirects=True,
+            verify=False,
         )
 
         return HttpCheckResult(
@@ -123,6 +124,7 @@ def check_robots(domain: str) -> RobotsCheckResult:
             url,
             timeout=10,
             follow_redirects=True,
+            verify=False,
         )
 
         if response.status_code == 200:
@@ -162,6 +164,7 @@ def check_sitemap(domain: str) -> SitemapCheckResult:
             url,
             timeout=10,
             follow_redirects=True,
+            verify=False,
         )
 
         if response.status_code != 200:
