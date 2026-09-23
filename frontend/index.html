@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка домена</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <p class="eyebrow">Мини-сервис</p>
+      <h1>Проверка домена</h1>
+      <p class="lead">Доступность страницы, срок сертификата, robots.txt и sitemap.</p>
+    </header>
+
+    <form id="check-form" class="form">
+      <label for="url">Адрес сайта</label>
+      <div class="row">
+        <input id="url" name="url" type="text" inputmode="url" placeholder="https://example.com" autocomplete="url" required>
+        <button type="submit">Проверить</button>
+      </div>
+      <p id="form-error" class="form-error" hidden></p>
+    </form>
+
+    <section id="results" class="results" hidden aria-live="polite"></section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
