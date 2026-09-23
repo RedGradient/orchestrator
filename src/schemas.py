@@ -48,3 +48,10 @@ class CheckResponse(BaseModel):
     ssl: SslCheckResult | None = None
     robots: RobotsCheckResult | None = None
     sitemap: SitemapCheckResult | None = None
+
+
+class CheckHistoryItem(BaseModel):
+    id: int
+    created_at: datetime
+    trigger: str
+    result: CheckResponse

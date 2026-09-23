@@ -7,24 +7,37 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main class="page">
-    <header class="header">
-      <p class="eyebrow">Мини-сервис</p>
-      <h1>Проверка домена</h1>
-      <p class="lead">Доступность страницы, срок сертификата, robots.txt и sitemap.</p>
-    </header>
-
-    <form id="check-form" class="form">
-      <label for="url">Адрес сайта</label>
-      <div class="row">
-        <input id="url" name="url" type="text" inputmode="url" placeholder="https://example.com" autocomplete="url" required>
-        <button type="submit">Проверить</button>
+  <div class="app">
+    <aside class="history">
+      <div class="history-head">
+        <p class="eyebrow">Журнал</p>
+        <h2>Проверки</h2>
       </div>
-      <p id="form-error" class="form-error" hidden></p>
-    </form>
+      <ul id="history-list" class="history-list"></ul>
+    </aside>
 
-    <section id="results" class="results" hidden aria-live="polite"></section>
-  </main>
+    <main class="workspace">
+      <header class="header">
+        <div>
+          <h1>Проверка сайта</h1>
+        </div>
+        <p class="lead">Страница, сертификат, robots.txt и sitemap. Прошлые запуски остаются в журнале слева.</p>
+      </header>
+
+      <form id="check-form" class="form">
+        <label for="url">Адрес</label>
+        <div class="row">
+          <input id="url" name="url" type="text" inputmode="url" placeholder="https://example.com" autocomplete="url" required>
+          <button type="submit">Проверить</button>
+        </div>
+        <p id="form-error" class="form-error" hidden></p>
+      </form>
+
+      <section id="results" class="results" aria-live="polite">
+        <p id="report-empty" class="report-empty">Запустите проверку или выберите запись в журнале.</p>
+      </section>
+    </main>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>

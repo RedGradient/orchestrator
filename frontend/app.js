@@ -2,13 +2,15 @@ const form = document.querySelector("#check-form");
 const input = document.querySelector("#url");
 const formError = document.querySelector("#form-error");
 const results = document.querySelector("#results");
+const historyList = document.querySelector("#history-list");
 const button = form.querySelector("button");
+
+let historyItems = [];
+let selectedId = null;
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   formError.hidden = true;
-  results.hidden = true;
-  results.replaceChildren();
   button.disabled = true;
   button.textContent = "Проверяю…";
 
@@ -26,13 +28,8 @@ form.addEventListener("submit", async (event) => {
       formError.textContent = readApiError(payload);
       return;
     }
-    results.hidden = false;
-    results.append(
-      renderHttp(payload.http),
-      renderSsl(payload.ssl),
-      renderRobots(payload.robots),
-      renderSitemap(payload.sitemap),
-    );
+    showResult(payload);
+    await loadHistory(true);
   } catch {
     formError.hidden = false;
     formError.textContent = "Сервис проверки не ответил.";
@@ -41,6 +38,87 @@ form.addEventListener("submit", async (event) => {
     button.textContent = "Проверить";
   }
 });
+
+loadHistory(false);
+
+async function loadHistory(selectNewest) {
+  const response = await fetch("/api/checks");
+  if (!response.ok) {
+    renderHistoryMessage("Не удалось загрузить журнал.");
+    return;
+  }
+  historyItems = await response.json();
+  if (selectNewest && historyItems.length) {
+    selectedId = historyItems[0].id;
+  }
+  renderHistory();
+}
+
+function renderHistory() {
+  historyList.replaceChildren();
+  if (!historyItems.length) {
+    renderHistoryMessage("Пока нет проверок.");
+    return;
+  }
+  for (const item of historyItems) {
+    const entry = document.createElement("li");
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = `history-item${item.id === selectedId ? " selected" : ""}`;
+    row.addEventListener("click", () => {
+      selectedId = item.id;
+      showResult(item.result);
+      renderHistory();
+    });
+
+    const domain = document.createElement("span");
+    domain.className = "history-domain";
+    domain.textContent = item.result.domain || item.result.url;
+
+    const meta = document.createElement("span");
+    meta.className = "history-meta";
+    meta.textContent = `${formatDate(item.created_at)} · ${item.trigger === "automatic" ? "авто" : "вручную"}`;
+
+    row.append(domain, meta, statusDots(item.result));
+    entry.append(row);
+    historyList.append(entry);
+  }
+}
+
+function renderHistoryMessage(text) {
+  const entry = document.createElement("li");
+  entry.className = "history-empty";
+  entry.textContent = text;
+  historyList.replaceChildren(entry);
+}
+
+function statusDots(result) {
+  const dots = document.createElement("span");
+  dots.className = "dots";
+  dots.append(
+    dot(result.http?.ok, "HTTP"),
+    dot(result.ssl ? result.ssl.ok : null, "SSL"),
+    dot(result.robots ? result.robots.available && !result.robots.error : null, "robots.txt"),
+    dot(result.sitemap ? result.sitemap.available && !result.sitemap.error : null, "sitemap"),
+  );
+  return dots;
+}
+
+function dot(ok, title) {
+  const mark = document.createElement("span");
+  mark.className = `dot${ok == null ? "" : ok ? " ok" : " bad"}`;
+  mark.title = title;
+  return mark;
+}
+
+function showResult(payload) {
+  results.replaceChildren(
+    renderHttp(payload.http),
+    renderSsl(payload.ssl),
+    renderRobots(payload.robots),
+    renderSitemap(payload.sitemap),
+  );
+}
 
 function normalizeUrl(value) {
   const trimmed = value.trim();
