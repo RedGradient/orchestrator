@@ -1,21 +1,24 @@
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
 from src.schemas import CheckRequest, CheckResponse
 from src.services import make_checks
+from src.session import get_session
 
 app = FastAPI()
 
 
 
-
-
-
 @app.post("/api/check")
-async def check(request: CheckRequest) -> CheckResponse:
-    return await make_checks(request)
+async def check(
+    request: CheckRequest,
+    session: Annotated[Session, Depends(get_session)],
+) -> CheckResponse:
+    return await make_checks(request, session)
 
 
 app.mount(
