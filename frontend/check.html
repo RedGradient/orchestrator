@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка сайта — Orchestrator</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="topnav" aria-label="Основная навигация">
+      <a class="brand" href="/">Orchestrator</a>
+      <div class="topnav-links">
+        <a href="/">Действия</a>
+        <a class="active" href="/check.html">Проверка сайта</a>
+      </div>
+    </nav>
+
+    <div class="app">
+      <aside class="history">
+        <div class="history-head">
+          <p class="eyebrow">Журнал</p>
+          <h2>Проверки</h2>
+        </div>
+        <ul id="history-list" class="history-list"></ul>
+      </aside>
+
+      <main class="workspace">
+        <header class="header">
+          <div>
+            <p class="eyebrow accent">Домен</p>
+            <h1>Проверка сайта</h1>
+          </div>
+          <p class="lead">Страница, сертификат, robots.txt и sitemap. Прошлые запуски остаются в журнале слева.</p>
+        </header>
+
+        <form id="check-form" class="form">
+          <label for="url">Адрес</label>
+          <div class="row">
+            <input id="url" name="url" type="text" inputmode="url" placeholder="https://example.com" autocomplete="url" required>
+            <button type="submit">Проверить</button>
+          </div>
+          <p id="form-error" class="form-error" hidden></p>
+        </form>
+
+        <section id="results" class="results" aria-live="polite">
+          <p id="report-empty" class="report-empty">Запустите проверку или выберите запись в журнале.</p>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="/check.js"></script>
+</body>
+</html>

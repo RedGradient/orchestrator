@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Действие — Orchestrator</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="topnav" aria-label="Основная навигация">
+      <a class="brand" href="/">Orchestrator</a>
+      <div class="topnav-links">
+        <a class="active" href="/">Действия</a>
+        <a href="/check.html">Проверка сайта</a>
+      </div>
+    </nav>
+
+    <main class="page">
+      <p class="back-link"><a href="/">← Все действия</a></p>
+
+      <header class="header">
+        <p class="eyebrow accent" id="action-eyebrow">Действие</p>
+        <h1 id="action-title">Действие</h1>
+        <p class="lead" id="action-description"></p>
+      </header>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Хосты</h2>
+            <p class="panel-note">Отметьте хосты, на которых выполнить операцию.</p>
+          </div>
+          <div class="panel-actions">
+            <button type="button" id="select-all" class="button ghost">Выбрать все</button>
+            <button type="button" id="run-action" class="button" disabled>Запустить</button>
+          </div>
+        </div>
+        <p id="hosts-error" class="form-error" hidden></p>
+        <ul id="hosts-list" class="host-list"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Добавить хост</h2>
+            <p class="panel-note">IP, пользователь и пароль для SSH.</p>
+          </div>
+        </div>
+        <form id="host-form" class="host-form">
+          <div class="field">
+            <label for="host-ip">IP</label>
+            <input id="host-ip" name="ip" required placeholder="93.115.20.214" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="host-username">Пользователь</label>
+            <input id="host-username" name="username" required placeholder="root" autocomplete="username">
+          </div>
+          <div class="field">
+            <label for="host-password">Пароль</label>
+            <input id="host-password" name="password" type="password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="button">Сохранить</button>
+          <p id="host-form-error" class="form-error" hidden></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Выполнение</h2>
+            <p class="panel-note" id="run-summary">Запуск ещё не начинался.</p>
+          </div>
+        </div>
+        <div id="run-results" class="run-results"></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/actions.js"></script>
+</body>
+</html>
