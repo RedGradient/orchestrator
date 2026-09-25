@@ -1,15 +1,20 @@
+import os
+from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Annotated
 
+import asyncssh
 from fastapi import Depends, FastAPI, status
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schemas import RegisterHostRequest, RegisterHostResponse, HostItem
+from src.models import Host
+from src.services.backup import postgres_dump
+from src.services.docker import docker_cleanup
+from src.schemas import RegisterHostRequest, RegisterHostResponse, HostItem, Command
 from src.services.host import create_host, list_hosts
 from src.schemas import CommandRequest, CommandResponse
 from src.services.checker import make_checks, list_checks
-from src.services.docker import try_run_command
 from src.schemas import CheckHistoryItem, CheckRequest, CheckResponse
 from src.session import get_session
 
@@ -32,11 +37,27 @@ async def checks(
 
 
 @app.post("/api/command", status_code=status.HTTP_201_CREATED)
-async def create_job(
+async def run_command(
     request: CommandRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> CommandResponse:
-    return await try_run_command(session, request)
+    if (host := await session.get(Host, request.host_id)) is None:
+        raise Exception(f"Нет зарегистрированного хоста с id {request.host_id}")
+
+    async with asyncssh.connect(
+            str(host.ip),
+            username=host.username,
+            password=host.password,
+            known_hosts=None,
+    ) as conn:
+        if request.command == Command.DOCKER_CLEANUP:
+            return await docker_cleanup(conn, IPv4Address(host.ip))
+
+        if request.command == Command.POSTGRES_BACKUP:
+            local_dir = Path(os.getcwd()) / "backup"
+            return await postgres_dump(conn, str(host.ip), str(local_dir))
+
+        raise Exception("Неизвестная команда")
 
 
 @app.get("/api/hosts")

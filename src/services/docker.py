@@ -1,11 +1,8 @@
 from ipaddress import IPv4Address
 
-import asyncssh
 from asyncssh import SSHClientConnection
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Host
-from src.schemas import CommandRequest, CommandResponse, Command, DockerPruneResult
+from src.schemas import CommandResponse, DockerPruneResult
 from src.services.helpers.docker_parsers import (
     format_bytes,
     get_free_disk_space,
@@ -18,28 +15,14 @@ from src.services.helpers.docker_parsers import (
 from src.services.helpers.ssh import run_command
 
 
-async def try_run_command(
-    session: AsyncSession,
-    request: CommandRequest,
-) -> CommandResponse:
-    if (host := await session.get(Host, request.host_id)) is None:
-        raise Exception(f"Нет зарегистрированного хоста с id {request.host_id}")
-
-    async with asyncssh.connect(
-        str(host.ip),
-        username=host.username,
-        password=host.password,
-        known_hosts=None,
-    ) as conn:
-        if request.command == Command.DOCKER_CLEANUP:
-            return await docker_cleanup(conn, IPv4Address(host.ip))
-
-
 async def docker_cleanup(
     conn: SSHClientConnection,
     ip: IPv4Address,
 ) -> CommandResponse:
-    """Полностью очищает Docker host от контейнеров и неиспользуемых ресурсов."""
+    """Полностью очищает Docker host от контейнеров и неиспользуемых ресурсов.
+
+    Возвращает CommandResponse с IP хоста и итогом очистки DockerPruneResult.
+    """
 
     result = DockerPruneResult()
 
