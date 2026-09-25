@@ -1,6 +1,7 @@
 from datetime import datetime
+from ipaddress import IPv4Address
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class CheckRequest(BaseModel):
@@ -55,3 +56,17 @@ class CheckHistoryItem(BaseModel):
     created_at: datetime
     trigger: str
     result: CheckResponse
+
+
+class RegisterHostRequest(BaseModel):
+    ip: IPv4Address
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class RegisterHostResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ip: str
+    username: str

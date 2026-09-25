@@ -1,12 +1,19 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, status
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schemas import CheckHistoryItem, CheckRequest, CheckResponse
-from src.services import list_checks, make_checks
+from src.schemas import (
+    CheckHistoryItem,
+    CheckRequest,
+    CheckResponse,
+    RegisterHostRequest,
+    RegisterHostResponse,
+)
+from src.services.checker import list_checks, make_checks
+from src.services.host import create_host
 from src.session import get_session
 
 app = FastAPI()
@@ -25,6 +32,14 @@ async def checks(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[CheckHistoryItem]:
     return await list_checks(session)
+
+
+@app.post("/api/host", status_code=status.HTTP_201_CREATED)
+async def register_host(
+    request: RegisterHostRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RegisterHostResponse:
+    return await create_host(session, request)
 
 
 app.mount(
