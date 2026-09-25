@@ -62,6 +62,7 @@ class CheckHistoryItem(BaseModel):
 
 class Command(str, Enum):
     DOCKER_CLEANUP = "docker_cleanup"
+    POSTGRES_BACKUP = "postgres_backup"
 
 
 class CommandRequest(BaseModel):

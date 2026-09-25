@@ -5,7 +5,14 @@ export const ACTIONS = [
     title: "Docker Cleanup",
     description:
       "Останавливает контейнеры и удаляет volumes, networks, images и build cache. Показывает, сколько места освободилось.",
-    apiAction: "docker_cleanup",
+    apiCommand: "docker_cleanup",
+  },
+  {
+    id: "postgres_backup",
+    title: "Postgres Backup",
+    description:
+      "Создаёт dump баз из запущенных контейнеров PostgreSQL на хосте и скачивает файлы на сервер оркестратора.",
+    apiCommand: "postgres_backup",
   },
 ];
 
@@ -104,7 +111,7 @@ function initActionPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             host_id: host.id,
-            action: action.apiAction,
+            command: action.apiCommand,
           }),
         });
         const payload = await response.json().catch(() => ({}));
@@ -307,6 +314,9 @@ function renderCommandResult(actionId, payload) {
   if (actionId === "docker_cleanup") {
     return renderDockerCleanupResult(payload.result || payload);
   }
+  if (actionId === "postgres_backup") {
+    return renderPostgresBackupResult(payload.result || payload);
+  }
   const pre = document.createElement("pre");
   pre.className = "result-json";
   pre.textContent = JSON.stringify(payload, null, 2);
@@ -341,6 +351,52 @@ function renderDockerCleanupResult(result) {
 
   wrap.append(list, space);
   return wrap;
+}
+
+function renderPostgresBackupResult(result) {
+  const wrap = document.createElement("div");
+  wrap.className = "cleanup-result";
+
+  const dumps = Array.isArray(result) ? result : [];
+  if (!dumps.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "Контейнеры PostgreSQL не найдены, dump не создан.";
+    wrap.append(empty);
+    return wrap;
+  }
+
+  const list = document.createElement("dl");
+  for (const item of dumps) {
+    const dt = document.createElement("dt");
+    dt.textContent = item.container || "container";
+    const dd = document.createElement("dd");
+    const size = formatByteSize(item.size_bytes);
+    dd.textContent = `${item.db_name || "?"} · ${size}`;
+    list.append(dt, dd);
+  }
+
+  const summary = document.createElement("p");
+  summary.className = "reclaimed";
+  summary.textContent = `Файлов: ${dumps.length}`;
+
+  wrap.append(list, summary);
+  return wrap;
+}
+
+function formatByteSize(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size) || size < 0) {
+    return "0B";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let amount = size;
+  for (const unit of units) {
+    if (amount < 1024 || unit === units.at(-1)) {
+      return `${amount < 10 && unit !== "B" ? amount.toFixed(2) : Math.round(amount)}${unit}`;
+    }
+    amount /= 1024;
+  }
+  return `${size}B`;
 }
 
 function statusLabel(status) {
