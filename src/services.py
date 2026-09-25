@@ -1,7 +1,7 @@
 import asyncio
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.checkers import check_http, check_ssl, check_sitemap, check_robots
 from src.models import Check, CheckTrigger, Site
@@ -10,7 +10,7 @@ from src.schemas import CheckHistoryItem, CheckResponse, CheckRequest
 
 async def make_checks(
         request: CheckRequest,
-        session: Session,
+        session: AsyncSession,
         trigger: CheckTrigger = CheckTrigger.MANUAL
 ) -> CheckResponse:
     domain = request.url.host
@@ -26,7 +26,7 @@ async def make_checks(
             domain=domain,
             http=http_result,
         )
-        _save_check(session, response, trigger)
+        await _save_check(session, response, trigger)
         return response
 
     robots_result, sitemap_result = await asyncio.gather(
@@ -44,23 +44,23 @@ async def make_checks(
         robots=robots_result,
         sitemap=sitemap_result,
     )
-    _save_check(session, response, trigger)
+    await _save_check(session, response, trigger)
     return response
 
 
-def _save_check(
-        session: Session,
+async def _save_check(
+        session: AsyncSession,
         response: CheckResponse,
         trigger: CheckTrigger
 ) -> None:
     """Сохраняет результат проверки для сайта. Повторный адрес использует уже существующий сайт."""
 
     url = str(response.url)
-    site = session.scalar(select(Site).where(Site.url == url))
+    site = await session.scalar(select(Site).where(Site.url == url))
     if site is None:
         site = Site(url=url, domain=response.domain)
         session.add(site)
-        session.flush()
+        await session.flush()
 
     session.add(
         Check(
@@ -69,14 +69,16 @@ def _save_check(
             data=response.model_dump(mode="json"),
         )
     )
-    session.commit()
+    await session.commit()
 
 
-def list_checks(session: Session, limit: int = 40) -> list[CheckHistoryItem]:
+async def list_checks(session: AsyncSession, limit: int = 40) -> list[CheckHistoryItem]:
     """Возвращает последние проверки, новые сверху."""
 
-    rows = session.scalars(
-        select(Check).order_by(Check.created_at.desc()).limit(limit)
+    rows = (
+        await session.scalars(
+            select(Check).order_by(Check.created_at.desc()).limit(limit)
+        )
     ).all()
     return [
         CheckHistoryItem(
