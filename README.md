@@ -50,4 +50,4 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
   Ответ: `{ "id", "ip", "username" }`
 - `POST /api/command` — выполнить действие на хосте  
   Тело: `{ "host_id": 1, "command": "docker_cleanup" }`  
-  Сейчас доступно только `docker_cleanup`
+  Доступные команды: `docker_cleanup`, `postgres_backup`
