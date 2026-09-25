@@ -5,7 +5,7 @@ from asyncssh import SSHClientConnection
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Host
-from src.schemas import CommandRequest, CommandResponse, JobAction, DockerPruneResult
+from src.schemas import CommandRequest, CommandResponse, Command, DockerPruneResult
 from src.services.helpers.docker_parsers import (
     format_bytes,
     get_free_disk_space,
@@ -31,7 +31,7 @@ async def try_run_command(
         password=host.password,
         known_hosts=None,
     ) as conn:
-        if request.action == JobAction.DOCKER_CLEANUP:
+        if request.command == Command.DOCKER_CLEANUP:
             return await docker_cleanup(conn, IPv4Address(host.ip))
 
 

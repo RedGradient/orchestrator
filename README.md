@@ -49,5 +49,5 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
   Тело: `{ "ip": "1.2.3.4", "username": "root", "password": "..." }`  
   Ответ: `{ "id", "ip", "username" }`
 - `POST /api/command` — выполнить действие на хосте  
-  Тело: `{ "host_id": 1, "action": "docker_cleanup" }`  
+  Тело: `{ "host_id": 1, "command": "docker_cleanup" }`  
   Сейчас доступно только `docker_cleanup`

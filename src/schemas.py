@@ -60,13 +60,13 @@ class CheckHistoryItem(BaseModel):
     result: CheckResponse
 
 
-class JobAction(str, Enum):
+class Command(str, Enum):
     DOCKER_CLEANUP = "docker_cleanup"
 
 
 class CommandRequest(BaseModel):
     host_id: int
-    action: JobAction
+    command: Command
 
 class CommandResponse(BaseModel):
     ip: IPv4Address
