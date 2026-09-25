@@ -5,8 +5,8 @@ from fastapi import Depends, FastAPI, status
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schemas import RegisterHostRequest, RegisterHostResponse
-from src.services.host import create_host
+from src.schemas import RegisterHostRequest, RegisterHostResponse, HostItem
+from src.services.host import create_host, list_hosts
 from src.schemas import CommandRequest, CommandResponse
 from src.services.checker import make_checks, list_checks
 from src.services.docker import try_run_command
@@ -37,6 +37,13 @@ async def create_job(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> CommandResponse:
     return await try_run_command(session, request)
+
+
+@app.get("/api/hosts")
+async def hosts(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[HostItem]:
+    return await list_hosts(session)
 
 
 @app.post("/api/host", status_code=status.HTTP_201_CREATED)

@@ -44,6 +44,7 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
 - `POST /api/check` — проверить сайт и сохранить результат  
   Тело: `{ "url": "https://example.com" }`
 - `GET /api/checks` — последние проверки из журнала
+- `GET /api/hosts` — список зарегистрированных хостов
 - `POST /api/host` — зарегистрировать SSH-хост  
   Тело: `{ "ip": "1.2.3.4", "username": "root", "password": "..." }`  
   Ответ: `{ "id", "ip", "username" }`
