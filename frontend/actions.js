@@ -14,6 +14,13 @@ export const ACTIONS = [
       "Создаёт dump баз из запущенных контейнеров PostgreSQL на хосте и скачивает файлы на сервер оркестратора.",
     apiCommand: "postgres_backup",
   },
+  {
+    id: "create_swap",
+    title: "Create SWAP",
+    description:
+      "Подбирает размер SWAP по свободному месту на диске, удаляет старый SWAP, создаёт новый файл и включает его после перезагрузки.",
+    apiCommand: "create_swap",
+  },
 ];
 
 const page = location.pathname;
@@ -317,6 +324,9 @@ function renderCommandResult(actionId, payload) {
   if (actionId === "postgres_backup") {
     return renderPostgresBackupResult(payload.result || payload);
   }
+  if (actionId === "create_swap") {
+    return renderCreateSwapResult(payload.result || payload);
+  }
   const pre = document.createElement("pre");
   pre.className = "result-json";
   pre.textContent = JSON.stringify(payload, null, 2);
@@ -357,7 +367,11 @@ function renderPostgresBackupResult(result) {
   const wrap = document.createElement("div");
   wrap.className = "cleanup-result";
 
-  const dumps = Array.isArray(result) ? result : [];
+  const dumps = Array.isArray(result)
+    ? result
+    : Array.isArray(result?.containers)
+      ? result.containers
+      : [];
   if (!dumps.length) {
     const empty = document.createElement("p");
     empty.textContent = "Контейнеры PostgreSQL не найдены, dump не создан.";
@@ -380,6 +394,50 @@ function renderPostgresBackupResult(result) {
   summary.textContent = `Файлов: ${dumps.length}`;
 
   wrap.append(list, summary);
+  return wrap;
+}
+
+function renderCreateSwapResult(result) {
+  const wrap = document.createElement("div");
+  wrap.className = "cleanup-result";
+
+  if (!result?.created) {
+    const empty = document.createElement("p");
+    empty.textContent =
+      "SWAP не создан: на диске недостаточно свободного места или заполнение ≥ 85%.";
+    wrap.append(empty);
+    return wrap;
+  }
+
+  const info = result.swap_info || {};
+  const list = document.createElement("dl");
+
+  const rows = [
+    ["Активен", info.is_active ? "да" : "нет"],
+    ["Размер SWAP", formatByteSize(info.total_swap_size_bytes)],
+    ["Свободно на диске", formatByteSize(info.free_disk_space_bytes)],
+  ];
+
+  for (const [label, value] of rows) {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    list.append(dt, dd);
+  }
+
+  wrap.append(list);
+
+  const swaps = Array.isArray(info.swaps) ? info.swaps : [];
+  if (swaps.length) {
+    const devices = document.createElement("p");
+    devices.className = "reclaimed";
+    devices.textContent = swaps
+      .map((item) => `${item.path} · ${formatByteSize(item.size_bytes)}`)
+      .join("; ");
+    wrap.append(devices);
+  }
+
   return wrap;
 }
 

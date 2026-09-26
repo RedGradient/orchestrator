@@ -13,7 +13,9 @@
 - **Docker Cleanup** — остановка и удаление контейнеров, prune volumes, networks,
   images и build cache; в отчёте — списки удалённых объектов и освобождённое место;
 - **Postgres Backup** — dump баз из запущенных контейнеров PostgreSQL на хосте;
-  файлы скачиваются в каталог `backup/` на сервере оркестратора.
+  файлы скачиваются в каталог `backup/` на сервере оркестратора;
+- **Create SWAP** — подбор размера по свободному месту, удаление старого SWAP,
+  создание файла `/swapfile` и запись в fstab.
 
 ## Стек
 
@@ -60,4 +62,4 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
   Ответ: `{ "id", "ip", "username" }`
 - `POST /api/command` — выполнить действие на хосте  
   Тело: `{ "host_id": 1, "command": "docker_cleanup" }`  
-  Команды: `docker_cleanup`, `postgres_backup`
+  Команды: `docker_cleanup`, `postgres_backup`, `create_swap`
