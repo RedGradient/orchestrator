@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from ipaddress import IPv4Address
 from typing import Any
 
@@ -70,9 +70,16 @@ class CommandRequest(BaseModel):
     host_id: int
     command: Command
 
+class CommandStatus(StrEnum):
+    SUCCESS = "success"
+    ERROR = "error"
+
+
 class CommandResponse(BaseModel):
-    ip: IPv4Address
-    result: Any
+    host: str
+    status: CommandStatus
+    result: Any | None = None
+    error: str | None = None
 
 
 class DockerPruneResult(BaseModel):

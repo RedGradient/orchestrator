@@ -1,5 +1,4 @@
 import os
-from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -8,18 +7,30 @@ from fastapi import Depends, FastAPI, status
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.services.swap import try_create_swap, get_swap_info
+from src.exc_handlers import register_exception_handlers
 from src.models import Host
+from src.schemas import (
+    RegisterHostRequest,
+    RegisterHostResponse,
+    HostItem,
+    Command,
+    CommandRequest,
+    CommandResponse,
+    CommandStatus,
+    CheckHistoryItem,
+    CheckRequest,
+    CheckResponse
+)
 from src.services.backup import postgres_dump
-from src.services.docker import docker_cleanup
-from src.schemas import RegisterHostRequest, RegisterHostResponse, HostItem, Command
-from src.services.host import create_host, list_hosts
-from src.schemas import CommandRequest
 from src.services.checker import make_checks, list_checks
-from src.schemas import CheckHistoryItem, CheckRequest, CheckResponse
+from src.services.docker import docker_cleanup
+from src.services.host import create_host, list_hosts
+from src.services.swap import try_create_swap
 from src.session import get_session
 
 app = FastAPI()
+
+register_exception_handlers(app)
 
 
 @app.post("/api/check")
@@ -52,16 +63,23 @@ async def run_command(
             known_hosts=None,
     ) as conn:
         if request.command == Command.DOCKER_CLEANUP:
-            return await docker_cleanup(conn, IPv4Address(host.ip))
+            result = await docker_cleanup(conn)
 
-        if request.command == Command.POSTGRES_BACKUP:
+        elif request.command == Command.POSTGRES_BACKUP:
             local_dir = Path(os.getcwd()) / "backup"
-            return await postgres_dump(conn, str(host.ip), str(local_dir))
+            result = await postgres_dump(conn, str(host.ip), str(local_dir))
 
-        if request.command == Command.CREATE_SWAP:
-            return await try_create_swap(conn)
+        elif request.command == Command.CREATE_SWAP:
+            result = await try_create_swap(conn)
 
-        raise Exception("Неизвестная команда")
+        else:
+            raise Exception("Неизвестная команда")
+
+        return CommandResponse(
+            host=str(host.ip),
+            status=CommandStatus.SUCCESS,
+            result=result
+        )
 
 
 @app.get("/api/hosts")

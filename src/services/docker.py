@@ -2,7 +2,7 @@ from ipaddress import IPv4Address
 
 from asyncssh import SSHClientConnection
 
-from src.schemas import CommandResponse, DockerPruneResult
+from src.schemas import DockerPruneResult
 from src.services.helpers.docker_parsers import (
     format_bytes,
     get_free_disk_space,
@@ -17,8 +17,7 @@ from src.services.helpers.ssh import run_command
 
 async def docker_cleanup(
     conn: SSHClientConnection,
-    ip: IPv4Address,
-) -> CommandResponse:
+) -> DockerPruneResult:
     """Полностью очищает Docker host от контейнеров и неиспользуемых ресурсов.
 
     Возвращает CommandResponse с IP хоста и итогом очистки DockerPruneResult.
@@ -90,4 +89,4 @@ async def docker_cleanup(
     # Получаем освободившееся место на диске после очистки
     result.disk_space_reclaimed = format_bytes(max(0, free_after - free_before))
 
-    return CommandResponse(ip=ip, result=result)
+    return result
