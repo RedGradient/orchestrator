@@ -1,12 +1,12 @@
 from datetime import datetime
 import shlex
 import uuid
-from ipaddress import IPv4Address
 from pathlib import Path
+from typing import Any
 
 from asyncssh import SSHClientConnection
 
-from src.schemas import CommandResponse
+from src.schemas import CommandResponse, CommandStatus
 from src.services.helpers.backup import (
     download_dump,
     get_postgres_database,
@@ -105,7 +105,7 @@ async def postgres_dump(
     conn: SSHClientConnection,
     host: str,
     local_dump_dir: str,
-) -> CommandResponse:
+) -> dict[str, Any]:
     """Делает dump баз из всех запущенных контейнеров PostgreSQL.
 
     Возвращает CommandResponse с IP хоста и списком сохранённых dump-файлов.
@@ -147,12 +147,9 @@ async def postgres_dump(
 
     finished_at = datetime.now()
 
-    return CommandResponse(
-        ip=IPv4Address(host),
-        result={
-            "created_at": started_at.strftime("%Y-%m-%d_%H-%M-%S"),
-            "finished_at": finished_at.strftime("%Y-%m-%d_%H-%M-%S"),
-            "duration_seconds": (finished_at - started_at).total_seconds(),
-            "containers": result,
-        },
-    )
+    return {
+        "created_at": started_at.strftime("%Y-%m-%d_%H-%M-%S"),
+        "finished_at": finished_at.strftime("%Y-%m-%d_%H-%M-%S"),
+        "duration_seconds": (finished_at - started_at).total_seconds(),
+        "containers": result,
+    }
