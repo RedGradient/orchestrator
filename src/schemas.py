@@ -63,6 +63,7 @@ class CheckHistoryItem(BaseModel):
 class Command(str, Enum):
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
+    CREATE_SWAP = "create_swap"
 
 
 class CommandRequest(BaseModel):
@@ -105,3 +106,20 @@ class HostItem(BaseModel):
     ip: str
     username: str
     created_at: datetime
+
+
+class SwapEntry(BaseModel):
+    path: str
+    size_bytes: int
+
+
+class SwapInfo(BaseModel):
+    is_active: bool
+    total_swap_size_bytes: int
+    free_disk_space_bytes: int
+    swaps: list[SwapEntry]
+
+
+class CreateSwapResult(BaseModel):
+    created: bool
+    swap_info: SwapInfo | None = None
