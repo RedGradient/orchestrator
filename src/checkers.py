@@ -1,12 +1,11 @@
-from datetime import datetime, timezone
-
-import dns.resolver
-import httpx
 import socket
 import ssl
+from datetime import UTC, datetime
+
+import httpx
 
 from src.helpers import _format_issuer, _inspect_robots, _inspect_sitemap, _strip_errno
-from src.schemas import HttpCheckResult, RobotsCheckResult, SslCheckResult, SitemapCheckResult
+from src.schemas import HttpCheckResult, RobotsCheckResult, SitemapCheckResult, SslCheckResult
 
 
 async def check_http(url: str) -> HttpCheckResult:
@@ -39,35 +38,30 @@ async def check_http(url: str) -> HttpCheckResult:
         )
 
 
-
 def check_ssl(domain: str, port: int = 443) -> SslCheckResult:
     """TLS handshake"""
 
     context = ssl.create_default_context()
 
     try:
-        with socket.create_connection(
-            (domain, port),
-            timeout=10,
-        ) as sock:
-            with context.wrap_socket(
-                sock,
-                server_hostname=domain,
-            ) as ssock:
-                certificate = ssock.getpeercert()
-                expires_at = datetime.fromtimestamp(
-                    ssl.cert_time_to_seconds(certificate["notAfter"]),
-                    tz=timezone.utc,
-                )
+        with (
+            socket.create_connection((domain, port), timeout=10) as sock,
+            context.wrap_socket(sock, server_hostname=domain) as ssock,
+        ):
+            certificate = ssock.getpeercert()
+            expires_at = datetime.fromtimestamp(
+                ssl.cert_time_to_seconds(certificate["notAfter"]),
+                tz=UTC,
+            )
 
-                return SslCheckResult(
-                    ok=True,
-                    version=ssock.version(),
-                    issuer=_format_issuer(certificate),
-                    expires_at=expires_at,
-                    days_remaining=(expires_at - datetime.now(timezone.utc)).days,
-                    error=None,
-                )
+            return SslCheckResult(
+                ok=True,
+                version=ssock.version(),
+                issuer=_format_issuer(certificate),
+                expires_at=expires_at,
+                days_remaining=(expires_at - datetime.now(UTC)).days,
+                error=None,
+            )
 
     except TimeoutError:
         return SslCheckResult(
@@ -104,7 +98,6 @@ def check_ssl(domain: str, port: int = 443) -> SslCheckResult:
             ok=False,
             error=_strip_errno(str(e)),
         )
-
 
 
 async def check_robots(domain: str) -> RobotsCheckResult:

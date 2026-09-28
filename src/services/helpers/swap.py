@@ -176,11 +176,7 @@ def parse_free_disk_space(output: str) -> int:
     Возвращает размер в байтах.
     """
 
-    lines = [
-        line.strip()
-        for line in output.splitlines()
-        if line.strip()
-    ]
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
 
     if len(lines) != 2:
         raise ValueError(f"Unexpected df output: {output!r}")
@@ -199,10 +195,6 @@ async def check_disk_size(
         error="Failed to get disk size",
     )
 
-    lines = [
-        line.strip()
-        for line in output.splitlines()
-        if line.strip()
-    ]
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
 
     return int(lines[1])

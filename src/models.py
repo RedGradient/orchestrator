@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Text, func, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -31,7 +31,7 @@ class Site(Base):
         server_default=func.now(),
     )
 
-    checks: Mapped[list["Check"]] = relationship(
+    checks: Mapped[list[Check]] = relationship(
         back_populates="site",
         cascade="all, delete-orphan",
         order_by="Check.created_at.desc()",
@@ -42,9 +42,7 @@ class Check(Base):
     """Один запуск проверки сайта."""
 
     __tablename__ = "checks"
-    __table_args__ = (
-        Index("ix_checks_site_id_created_at", "site_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_checks_site_id_created_at", "site_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     site_id: Mapped[int] = mapped_column(ForeignKey("sites.id"))

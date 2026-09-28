@@ -1,19 +1,18 @@
-from datetime import datetime
 import shlex
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from asyncssh import SSHClientConnection
 
-from src.schemas import CommandResponse, CommandStatus
 from src.services.helpers.backup import (
     download_dump,
     get_postgres_database,
     get_postgres_user,
     parse_container_list,
     parse_databases,
-    remove_remote_file
+    remove_remote_file,
 )
 from src.services.helpers.ssh import run_command
 
@@ -35,11 +34,7 @@ async def get_postgres_containers(
     )
 
     containers = parse_container_list(stdout)
-    return [
-        container
-        for container in containers
-        if "postgres" in container["image"].lower()
-    ]
+    return [container for container in containers if "postgres" in container["image"].lower()]
 
 
 async def get_postgres_databases(
@@ -56,7 +51,7 @@ async def get_postgres_databases(
         f"docker exec {shlex.quote(container_name)} "
         f"psql -U {username} -d postgres -Atc "
         f'"SELECT datname FROM pg_database '
-        f"WHERE datistemplate = false;\""
+        f'WHERE datistemplate = false;"'
     )
 
     stdout = await run_command(
@@ -92,10 +87,7 @@ async def create_postgres_dump(
     await run_command(
         conn,
         command,
-        error=(
-            f"Can not make dump of database "
-            f"{database_name} from {container_name}"
-        ),
+        error=(f"Can not make dump of database {database_name} from {container_name}"),
     )
 
     return remote_path
@@ -139,11 +131,13 @@ async def postgres_dump(
 
         await remove_remote_file(conn, remote_path)
 
-        result.append({
-            "container": container_name,
-            "db_name": db_name,
-            "size_bytes": local_path.stat().st_size,
-        })
+        result.append(
+            {
+                "container": container_name,
+                "db_name": db_name,
+                "size_bytes": local_path.stat().st_size,
+            }
+        )
 
     finished_at = datetime.now()
 

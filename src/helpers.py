@@ -4,7 +4,15 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
-ROBOTS_DIRECTIVES = {"user-agent", "allow", "disallow", "sitemap", "crawl-delay", "host", "clean-param"}
+ROBOTS_DIRECTIVES = {
+    "user-agent",
+    "allow",
+    "disallow",
+    "sitemap",
+    "crawl-delay",
+    "host",
+    "clean-param",
+}
 SITEMAP_URL_FIELDS = {"loc", "lastmod", "changefreq", "priority"}
 SITEMAP_INDEX_FIELDS = {"loc", "lastmod"}
 CHANGEFREQ_VALUES = {"always", "hourly", "daily", "weekly", "monthly", "yearly", "never"}
@@ -130,7 +138,12 @@ def _inspect_sitemap(text: str) -> tuple[bool, list[str], list[str], int | None]
 
     root_name = _local_name(root.tag)
     if root_name not in {"urlset", "sitemapindex"}:
-        return False, [f"Корневой элемент должен быть urlset или sitemapindex, получен «{root_name}»"], warnings, None
+        return (
+            False,
+            [f"Корневой элемент должен быть urlset или sitemapindex, получен «{root_name}»"],
+            warnings,
+            None,
+        )
 
     if not root.tag.startswith("{" + SITEMAP_NS + "}"):
         warnings.append(f"Нет пространства имён {SITEMAP_NS}")

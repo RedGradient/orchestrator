@@ -16,9 +16,7 @@ class Settings(BaseSettings):
 
     app_port: int = 8000
 
-    database_url: str = (
-        "postgresql+psycopg://orchestrator:orchestrator@localhost:5432/orchestrator"
-    )
+    database_url: str = "postgresql+psycopg://orchestrator:orchestrator@localhost:5432/orchestrator"
 
     @property
     def postgres_dsn(self) -> str:

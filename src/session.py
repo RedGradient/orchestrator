@@ -12,7 +12,7 @@ SessionLocal = async_sessionmaker(
 )
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     """Открывает асинхронную сессию базы и закрывает её после использования."""
 
     async with SessionLocal() as session:

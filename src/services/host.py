@@ -29,7 +29,5 @@ async def create_host(
 async def list_hosts(session: AsyncSession) -> list[HostItem]:
     """Возвращает зарегистрированные хосты, новые сверху."""
 
-    rows = (
-        await session.scalars(select(Host).order_by(Host.created_at.desc()))
-    ).all()
+    rows = (await session.scalars(select(Host).order_by(Host.created_at.desc()))).all()
     return [HostItem.model_validate(row) for row in rows]
