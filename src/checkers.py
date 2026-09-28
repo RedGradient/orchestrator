@@ -9,13 +9,6 @@ from src.helpers import _format_issuer, _inspect_robots, _inspect_sitemap, _stri
 from src.schemas import HttpCheckResult, RobotsCheckResult, SslCheckResult, SitemapCheckResult
 
 
-def resolve_domain(domain: str) -> list[tuple[str, int]]:
-    """Возвращает [ip, port], ассоциированные с доменом"""
-
-    answers = dns.resolver.resolve(domain, "A")
-    return [answer.address for answer in answers]
-
-
 async def check_http(url: str) -> HttpCheckResult:
     """Возвращает результат HTTP запроса по переданному URL"""
 
