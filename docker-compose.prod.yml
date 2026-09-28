@@ -17,7 +17,10 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        REQUIREMENTS_FILE: requirements.txt
     restart: unless-stopped
     env_file:
       - .env

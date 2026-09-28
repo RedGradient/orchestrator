@@ -16,7 +16,10 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        REQUIREMENTS_FILE: requirements.dev.txt
     ports:
       - "${APP_PORT}:8000"
     env_file:

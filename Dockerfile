@@ -14,7 +14,7 @@ RUN apt-get update \
 COPY certs/ /usr/local/share/ca-certificates/mincifry/
 RUN update-ca-certificates
 
-COPY requirements.txt .
+COPY requirements.txt requirements.dev.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
