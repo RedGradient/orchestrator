@@ -1,5 +1,7 @@
 """Вспомогательные функции для работы с SWAP на удалённом хосте."""
 
+import os
+
 from asyncssh import SSHClientConnection
 
 from src.schemas import SwapEntry
@@ -9,17 +11,25 @@ from src.services.helpers.ssh import run_command
 def calculate_swap_size(
     free_space_bytes: int,
     disk_size_bytes: int,
+    ram_size_bytes: int,
 ) -> int | None:
-    """Выбирает размер SWAP в зависимости от объёма свободного места на диске.
+    """Выбирает размер SWAP с учётом свободного места на диске и RAM.
 
-    Политика:
+    Политика по диску:
+    - менее 4 GB свободного места → максимум 1 GB SWAP;
+    - от 4 до менее 8 GB → максимум 2 GB SWAP;
+    - от 8 до менее 16 GB → максимум 4 GB SWAP;
+    - 16 GB и более → максимум 8 GB SWAP.
 
-    - менее 4 GB свободного места → 1 GB SWAP;
-    - от 4 до менее 8 GB → 2 GB SWAP;
-    - от 8 до менее 16 GB → 4 GB SWAP;
-    - 16 GB и более → 8 GB SWAP.
+    Политика по RAM:
+    - менее 2 GB RAM → 2 GB SWAP;
+    - от 2 до 8 GB RAM → 2 GB SWAP;
+    - более 8 GB RAM → 4 GB SWAP.
 
-    Возвращает размер SWAP в мегабайтах или None, если диск заполнен на 85% и более.
+    Итоговый размер SWAP ограничивается обоими условиями.
+
+    Возвращает размер SWAP в мегабайтах или None,
+    если диск заполнен на 85% и более.
     """
 
     disk_usage_percent = 100 - (free_space_bytes / disk_size_bytes * 100)
@@ -28,17 +38,29 @@ def calculate_swap_size(
         return None
 
     free_space_mb = free_space_bytes // (1024 * 1024)
+    ram_size_mb = ram_size_bytes // (1024 * 1024)
 
     if free_space_mb < 4 * 1024:
-        size_mb = 1024
+        max_swap_by_disk = 1024
     elif free_space_mb < 8 * 1024:
-        size_mb = 2048
+        max_swap_by_disk = 2048
     elif free_space_mb < 16 * 1024:
-        size_mb = 4096
+        max_swap_by_disk = 4096
     else:
-        size_mb = 8192
+        max_swap_by_disk = 8192
 
-    return size_mb
+    if ram_size_mb <= 8 * 1024:
+        swap_by_ram = 2048
+    else:
+        swap_by_ram = 4096
+
+    return min(swap_by_ram, max_swap_by_disk)
+
+
+def get_ram_size() -> int:
+    """Возвращает общий объём RAM в байтах."""
+
+    return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
 
 
 async def get_swap_list(
