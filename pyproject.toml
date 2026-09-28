@@ -21,6 +21,10 @@ select = [
     "C4",     # flake8-comprehensions
 ]
 
+ignore = [
+    "SIM108",
+]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

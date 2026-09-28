@@ -7,6 +7,7 @@ from src.services.helpers.swap import (
     check_disk_size,
     check_swap,
     free_disk_space,
+    get_ram_size,
     get_swap_list,
     try_remove_swap_file,
 )
@@ -25,6 +26,7 @@ async def try_create_swap(
     size_mb = calculate_swap_size(
         free_space_bytes=await free_disk_space(conn),
         disk_size_bytes=await check_disk_size(conn),
+        ram_size_bytes=get_ram_size(),
     )
 
     if size_mb is None:
