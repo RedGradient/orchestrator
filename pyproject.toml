@@ -1,0 +1,26 @@
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "alembic/versions",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle
+    "F",      # Pyflakes
+    "I",      # import sorting
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "ASYNC",  # flake8-async
+    "SIM",    # flake8-simplify
+    "RET",    # flake8-return
+    "C4",     # flake8-comprehensions
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
