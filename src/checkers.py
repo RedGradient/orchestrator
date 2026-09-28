@@ -22,7 +22,7 @@ async def check_http(url: str) -> HttpCheckResult:
         return HttpCheckResult(
             ok=True,
             status_code=response.status_code,
-            response_time_ms=response.elapsed.seconds,
+            response_time_ms=response.elapsed.total_seconds() * 1000,
         )
 
     except httpx.TimeoutException:
