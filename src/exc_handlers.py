@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from src.exceptions import CommandError, CommandOutputError
+from src.exceptions import CommandError, CommandOutputError, HostNotFoundError
 from src.schemas import CommandResponse, CommandStatus
 
 
@@ -32,4 +32,14 @@ def register_exception_handlers(app: FastAPI) -> None:
                 status=CommandStatus.ERROR,
                 error=str(exc),
             ).model_dump(),
+        )
+
+    @app.exception_handler(HostNotFoundError)
+    async def host_not_found_handler(
+        _request: Request,
+        exc: HostNotFoundError,
+    ):
+        return JSONResponse(
+            status_code=404,
+            content={"detail": str(exc)},
         )

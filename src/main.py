@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exc_handlers import register_exception_handlers
+from src.exceptions import HostNotFoundError
 from src.models import Host
 from src.schemas import (
     CheckHistoryItem,
@@ -54,7 +55,7 @@ async def run_command(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Any:
     if (host := await session.get(Host, request.host_id)) is None:
-        raise Exception(f"Нет зарегистрированного хоста с id {request.host_id}")
+        raise HostNotFoundError(host_id=request.host_id)
 
     async with asyncssh.connect(
         str(host.ip),
