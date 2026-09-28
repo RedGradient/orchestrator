@@ -22,7 +22,7 @@ async def check_http(url: str) -> HttpCheckResult:
         return HttpCheckResult(
             ok=True,
             status_code=response.status_code,
-            response_time_ms=response.elapsed.seconds,
+            response_time_ms=response.elapsed.total_seconds() * 1000,
         )
 
     except httpx.TimeoutException:
@@ -103,84 +103,85 @@ def check_ssl(domain: str, port: int = 443) -> SslCheckResult:
 async def check_robots(domain: str) -> RobotsCheckResult:
     """Загружает robots.txt домена и проверяет, доступен ли файл и правильно ли он составлен."""
 
-    url = f"https://{domain}/robots.txt"
+    async with httpx.AsyncClient(
+        timeout=10,
+        follow_redirects=True,
+        verify=False,
+    ) as client:
+        for scheme in ("https", "http"):
+            url = f"{scheme}://{domain}/robots.txt"
 
-    try:
-        async with httpx.AsyncClient(
-            timeout=10,
-            follow_redirects=True,
-            verify=False,
-        ) as client:
-            response = await client.get(url)
+            try:
+                response = await client.get(url)
 
-        if response.status_code == 200:
-            valid, errors, warnings, sitemaps = _inspect_robots(response.text)
-        else:
-            valid, errors, warnings, sitemaps = None, [], [], []
+                if response.status_code == 200:
+                    valid, errors, warnings, sitemaps = _inspect_robots(
+                        response.text,
+                    )
 
-        return RobotsCheckResult(
-            available=response.status_code == 200,
-            status_code=response.status_code,
-            valid=valid,
-            errors=errors,
-            warnings=warnings,
-            sitemaps=sitemaps,
-        )
+                    return RobotsCheckResult(
+                        available=True,
+                        status_code=response.status_code,
+                        valid=valid,
+                        errors=errors,
+                        warnings=warnings,
+                        sitemaps=sitemaps,
+                    )
 
-    except httpx.TimeoutException:
-        return RobotsCheckResult(
-            available=False,
-            error="timeout",
-        )
+            except httpx.TimeoutException:
+                continue
 
-    except httpx.RequestError as e:
-        return RobotsCheckResult(
-            available=False,
-            error=_strip_errno(str(e)),
-        )
+            except httpx.RequestError:
+                continue
+
+    return RobotsCheckResult(
+        available=False,
+        error="robots.txt is not available",
+    )
 
 
 async def check_sitemap(domain: str) -> SitemapCheckResult:
     """Загружает sitemap.xml домена и проверяет, доступен ли файл и правильно ли он составлен."""
 
-    url = f"https://{domain}/sitemap.xml"
+    async with httpx.AsyncClient(
+        timeout=10,
+        follow_redirects=True,
+        verify=False,
+    ) as client:
+        for scheme in ("https", "http"):
+            url = f"{scheme}://{domain}/sitemap.xml"
 
-    try:
-        async with httpx.AsyncClient(
-            timeout=10,
-            follow_redirects=True,
-            verify=False,
-        ) as client:
-            response = await client.get(url)
+            try:
+                response = await client.get(url)
 
-        if response.status_code != 200:
-            return SitemapCheckResult(
-                available=False,
-                status_code=response.status_code,
-                valid=None,
-                errors=[],
-                warnings=[],
-                url_count=None,
-            )
+                if response.status_code != 200:
+                    continue
 
-        valid, errors, warnings, url_count = _inspect_sitemap(response.text)
-        return SitemapCheckResult(
-            available=True,
-            status_code=response.status_code,
-            valid=valid,
-            errors=errors,
-            warnings=warnings,
-            url_count=url_count,
-        )
+                valid, errors, warnings, url_count = _inspect_sitemap(
+                    response.text,
+                )
 
-    except httpx.TimeoutException:
-        return SitemapCheckResult(
-            available=False,
-            error="timeout",
-        )
+                return SitemapCheckResult(
+                    available=True,
+                    status_code=response.status_code,
+                    valid=valid,
+                    errors=errors,
+                    warnings=warnings,
+                    url_count=url_count,
+                )
 
-    except httpx.RequestError as e:
-        return SitemapCheckResult(
-            available=False,
-            error=_strip_errno(str(e)),
-        )
+            except httpx.TimeoutException:
+                continue
+
+            except httpx.RequestError:
+                continue
+
+    return SitemapCheckResult(
+        available=False,
+        status_code=None,
+        valid=None,
+        errors=[],
+        warnings=[],
+        url_count=None,
+        error="sitemap.xml is not available",
+    )
