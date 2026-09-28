@@ -10,19 +10,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.exc_handlers import register_exception_handlers
 from src.models import Host
 from src.schemas import (
-    RegisterHostRequest,
-    RegisterHostResponse,
-    HostItem,
+    CheckHistoryItem,
+    CheckRequest,
+    CheckResponse,
     Command,
     CommandRequest,
     CommandResponse,
     CommandStatus,
-    CheckHistoryItem,
-    CheckRequest,
-    CheckResponse
+    HostItem,
+    RegisterHostRequest,
+    RegisterHostResponse,
 )
 from src.services.backup import postgres_dump
-from src.services.checker import make_checks, list_checks
+from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
 from src.services.host import create_host, list_hosts
 from src.services.swap import try_create_swap
@@ -57,10 +57,10 @@ async def run_command(
         raise Exception(f"Нет зарегистрированного хоста с id {request.host_id}")
 
     async with asyncssh.connect(
-            str(host.ip),
-            username=host.username,
-            password=host.password,
-            known_hosts=None,
+        str(host.ip),
+        username=host.username,
+        password=host.password,
+        known_hosts=None,
     ) as conn:
         if request.command == Command.DOCKER_CLEANUP:
             result = await docker_cleanup(conn)
@@ -75,11 +75,7 @@ async def run_command(
         else:
             raise Exception("Неизвестная команда")
 
-        return CommandResponse(
-            host=str(host.ip),
-            status=CommandStatus.SUCCESS,
-            result=result
-        )
+        return CommandResponse(host=str(host.ip), status=CommandStatus.SUCCESS, result=result)
 
 
 @app.get("/api/hosts")

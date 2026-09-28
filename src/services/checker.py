@@ -3,15 +3,13 @@ import asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.checkers import check_http, check_ssl, check_sitemap, check_robots
+from src.checkers import check_http, check_robots, check_sitemap, check_ssl
 from src.models import Check, CheckTrigger, Site
-from src.schemas import CheckHistoryItem, CheckResponse, CheckRequest
+from src.schemas import CheckHistoryItem, CheckRequest, CheckResponse
 
 
 async def make_checks(
-        request: CheckRequest,
-        session: AsyncSession,
-        trigger: CheckTrigger = CheckTrigger.MANUAL
+    request: CheckRequest, session: AsyncSession, trigger: CheckTrigger = CheckTrigger.MANUAL
 ) -> CheckResponse:
     domain = request.url.host
 
@@ -38,7 +36,6 @@ async def make_checks(
     response = CheckResponse(
         url=request.url,
         domain=domain,
-
         http=http_result,
         ssl=ssl_result,
         robots=robots_result,
@@ -49,9 +46,7 @@ async def make_checks(
 
 
 async def _save_check(
-        session: AsyncSession,
-        response: CheckResponse,
-        trigger: CheckTrigger
+    session: AsyncSession, response: CheckResponse, trigger: CheckTrigger
 ) -> None:
     """Сохраняет результат проверки для сайта. Повторный адрес использует уже существующий сайт."""
 
@@ -76,15 +71,15 @@ async def list_checks(session: AsyncSession, limit: int = 40) -> list[CheckHisto
     """Возвращает последние проверки, новые сверху."""
 
     rows = (
-        await session.scalars(
-            select(Check).order_by(Check.created_at.desc()).limit(limit)
-        )
+        await session.scalars(select(Check).order_by(Check.created_at.desc()).limit(limit))
     ).all()
     return [
         CheckHistoryItem(
             id=row.id,
             created_at=row.created_at,
-            trigger=row.trigger.value if isinstance(row.trigger, CheckTrigger) else str(row.trigger),
+            trigger=row.trigger.value
+            if isinstance(row.trigger, CheckTrigger)
+            else str(row.trigger),
             result=CheckResponse.model_validate(row.data),
         )
         for row in rows

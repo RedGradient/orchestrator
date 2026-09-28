@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from src.schemas import CommandResponse, CommandStatus
 from src.exceptions import CommandError, CommandOutputError
+from src.schemas import CommandResponse, CommandStatus
 
 
 def register_exception_handlers(app: FastAPI) -> None:

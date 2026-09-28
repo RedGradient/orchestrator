@@ -1,6 +1,6 @@
 from asyncssh import SSHClientConnection
 
-from src.schemas import SwapInfo, CreateSwapResult
+from src.schemas import CreateSwapResult, SwapInfo
 from src.services.helpers.ssh import run_command
 from src.services.helpers.swap import (
     calculate_swap_size,

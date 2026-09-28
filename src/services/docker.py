@@ -1,5 +1,3 @@
-from ipaddress import IPv4Address
-
 from asyncssh import SSHClientConnection
 
 from src.schemas import DockerPruneResult

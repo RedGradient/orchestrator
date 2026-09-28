@@ -6,11 +6,7 @@ from src.services.helpers.ssh import run_command
 def parse_deleted_containers(stdout: str) -> list[str]:
     """Разбирает вывод docker ps -aq / docker rm."""
 
-    return [
-        line.strip()
-        for line in stdout.splitlines()
-        if line.strip()
-    ]
+    return [line.strip() for line in stdout.splitlines() if line.strip()]
 
 
 def parse_pruned_volumes(stdout: str) -> list[str]:
@@ -69,17 +65,11 @@ def parse_pruned_images(
             continue
 
         if line.startswith("untagged: "):
-            untagged_images.append(
-                line.removeprefix("untagged: ").strip()
-            )
+            untagged_images.append(line.removeprefix("untagged: ").strip())
         elif line.startswith("deleted: "):
-            deleted_images.append(
-                line.removeprefix("deleted: ").strip()
-            )
+            deleted_images.append(line.removeprefix("deleted: ").strip())
         elif line.startswith("Total reclaimed space:"):
-            reclaimed_space = (
-                line.removeprefix("Total reclaimed space:").strip()
-            )
+            reclaimed_space = line.removeprefix("Total reclaimed space:").strip()
 
     return untagged_images, deleted_images, reclaimed_space
 
@@ -100,9 +90,7 @@ def parse_build_cache(stdout: str) -> tuple[list[str], str]:
         if line.startswith("Total:"):
             continue
         if line.startswith("Reclaimed Space:"):
-            reclaimed_space = (
-                line.removeprefix("Reclaimed Space:").strip()
-            )
+            reclaimed_space = line.removeprefix("Reclaimed Space:").strip()
             continue
 
         cache_id = line.split()[0].rstrip("*")

@@ -1,19 +1,21 @@
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum
 from ipaddress import IPv4Address
 from typing import Any
 
-from pydantic import BaseModel, HttpUrl, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class CheckRequest(BaseModel):
     url: HttpUrl
+
 
 class HttpCheckResult(BaseModel):
     ok: bool
     status_code: int | None = None
     response_time_ms: float | None = None
     error: str | None = None
+
 
 class SslCheckResult(BaseModel):
     ok: bool
@@ -43,6 +45,7 @@ class SitemapCheckResult(BaseModel):
     url_count: int | None = None
     error: str | None = None
 
+
 class CheckResponse(BaseModel):
     url: HttpUrl
     domain: str | None = None
@@ -60,7 +63,7 @@ class CheckHistoryItem(BaseModel):
     result: CheckResponse
 
 
-class Command(str, Enum):
+class Command(StrEnum):
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
     CREATE_SWAP = "create_swap"
@@ -69,6 +72,7 @@ class Command(str, Enum):
 class CommandRequest(BaseModel):
     host_id: int
     command: Command
+
 
 class CommandStatus(StrEnum):
     SUCCESS = "success"

@@ -1,7 +1,6 @@
 """Вспомогательные функции для бэкапа PostgreSQL на удалённом хосте."""
 
 import shlex
-from pathlib import Path
 from typing import Any
 
 from asyncssh import SSHClientConnection
@@ -15,11 +14,7 @@ def parse_databases(output: str) -> list[str]:
     Возвращает список имён баз данных без пустых строк.
     """
 
-    return [
-        line.strip()
-        for line in output.splitlines()
-        if line.strip()
-    ]
+    return [line.strip() for line in output.splitlines() if line.strip()]
 
 
 def parse_container_list(stdout: str) -> list[dict[str, Any]]:
@@ -33,13 +28,15 @@ def parse_container_list(stdout: str) -> list[dict[str, Any]]:
         if not line.strip():
             continue
         container_id, image, command, status, name = line.split("\t")
-        containers.append({
-            "id": container_id,
-            "image": image,
-            "command": command,
-            "status": status,
-            "name": name,
-        })
+        containers.append(
+            {
+                "id": container_id,
+                "image": image,
+                "command": command,
+                "status": status,
+                "name": name,
+            }
+        )
     return containers
 
 
@@ -68,9 +65,7 @@ async def get_postgres_user(
 
     username = stdout.strip()
     if not username:
-        raise RuntimeError(
-            f"POSTGRES_USER is not set in container {container_name}"
-        )
+        raise RuntimeError(f"POSTGRES_USER is not set in container {container_name}")
     return username
 
 
@@ -99,9 +94,7 @@ async def get_postgres_database(
 
     database = stdout.strip()
     if not database:
-        raise RuntimeError(
-            f"POSTGRES_DB is not set in container {container_name}"
-        )
+        raise RuntimeError(f"POSTGRES_DB is not set in container {container_name}")
     return database
 
 
