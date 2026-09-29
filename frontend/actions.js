@@ -21,6 +21,13 @@ export const ACTIONS = [
       "Подбирает размер SWAP по свободному месту на диске, удаляет старый SWAP, создаёт новый файл и включает его после перезагрузки.",
     apiCommand: "create_swap",
   },
+  {
+    id: "logs_cleanup",
+    title: "Logs Cleanup",
+    description:
+        "Настраивает и выполняет ротацию логов на удалённом сервере, ограничивает их размер и освобождает дисковое пространство, сохраняя последние записи логов.",
+    apiCommand: "logs_cleanup",
+  }
 ];
 
 const page = location.pathname;
@@ -327,6 +334,9 @@ function renderCommandResult(actionId, payload) {
   if (actionId === "create_swap") {
     return renderCreateSwapResult(payload.result || payload);
   }
+  if (actionId === "logs_cleanup") {
+    return renderLogsCleanupResult(payload.result || payload);
+  }
   const pre = document.createElement("pre");
   pre.className = "result-json";
   pre.textContent = JSON.stringify(payload, null, 2);
@@ -437,6 +447,114 @@ function renderCreateSwapResult(result) {
       .join("; ");
     wrap.append(devices);
   }
+
+  return wrap;
+}
+
+function renderLogsCleanupResult(result) {
+  const wrap = document.createElement("div");
+  wrap.className = "cleanup-result";
+
+  if (!result) {
+    const empty = document.createElement("p");
+    empty.textContent = "Результат очистки логов отсутствует.";
+    wrap.append(empty);
+    return wrap;
+  }
+
+  const list = document.createElement("dl");
+
+  const addRow = (label, value) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+
+    list.append(dt, dd);
+  };
+
+  if (result.logrotate) {
+    addRow(
+      "Logrotate",
+      result.logrotate.success
+        ? result.logrotate.already_installed
+          ? "уже установлен"
+          : "установлен"
+        : `ошибка: ${result.logrotate.error || "неизвестная ошибка"}`
+    );
+  }
+
+  if (result.fail2ban) {
+    addRow(
+      "Fail2Ban",
+      result.fail2ban.success
+        ? result.fail2ban.already_installed
+          ? "уже установлен"
+          : "установлен"
+        : `ошибка: ${result.fail2ban.error || "неизвестная ошибка"}`
+    );
+  }
+
+  if (result.journald) {
+    addRow(
+      "Journald",
+      result.journald.success
+        ? "настроен"
+        : `ошибка: ${result.journald.error || "неизвестная ошибка"}`
+    );
+  }
+
+  if (result.fail2ban_config) {
+    addRow(
+      "Конфигурация Fail2Ban",
+      result.fail2ban_config.success
+        ? "настроен"
+        : `ошибка: ${
+            result.fail2ban_config.error || "неизвестная ошибка"
+          }`
+    );
+  }
+
+  if (result.dockerd) {
+    addRow(
+      "Docker",
+      result.dockerd.success
+        ? "настроен"
+        : `ошибка: ${result.dockerd.error || "неизвестная ошибка"}`
+    );
+  }
+
+  wrap.append(list);
+
+  const logrotateConfigs = Array.isArray(result.logrotate_config)
+    ? result.logrotate_config
+    : [];
+
+  if (logrotateConfigs.length) {
+    const logs = document.createElement("p");
+    logs.className = "reclaimed";
+
+    logs.textContent = logrotateConfigs
+      .map((item) => {
+        const status = item.success
+          ? "настроен"
+          : `ошибка: ${item.error || "неизвестная ошибка"}`;
+
+        return `${item.path} · ${status}`;
+      })
+      .join("; ");
+
+    wrap.append(logs);
+  }
+
+  const freedBytes = result.freed_bytes || 0;
+
+  const freed = document.createElement("p");
+  freed.className = "reclaimed";
+  freed.textContent = `Освобождено: ${formatByteSize(freedBytes)}`;
+
+  wrap.append(freed);
 
   return wrap;
 }
