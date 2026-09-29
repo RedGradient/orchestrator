@@ -67,6 +67,7 @@ class Command(StrEnum):
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
     CREATE_SWAP = "create_swap"
+    LOGS_CLEANUP = "logs_cleanup"
 
 
 class CommandRequest(BaseModel):
@@ -134,3 +135,61 @@ class SwapInfo(BaseModel):
 class CreateSwapResult(BaseModel):
     created: bool
     swap_info: SwapInfo | None = None
+
+
+class LogrotateResult(BaseModel):
+    path: str
+    success: bool
+    error: str | None = None
+
+
+class Fail2BanResult(BaseModel):
+    success: bool
+    error: str | None = None
+
+
+class DockerDaemonResult(BaseModel):
+    """Результат настройки Docker daemon."""
+
+    success: bool
+    error: str | None = None
+
+
+class JournaldResult(BaseModel):
+    success: bool
+    system_max_use: str | None = None
+    system_max_file_size: str | None = None
+    error: str | None = None
+
+
+class PackageInstallResult(BaseModel):
+    """Результат проверки и установки пакета."""
+
+    already_installed: bool = Field(
+        description="Был ли пакет уже установлен до начала операции.",
+    )
+    success: bool = Field(
+        description="Завершилась ли проверка или установка пакета успешно.",
+    )
+    error: str | None = Field(
+        default=None,
+        description="Описание ошибки при проверке или установке пакета.",
+    )
+
+
+class LogsCleanupResult(BaseModel):
+    """Результат установки и настройки механизмов очистки системных логов."""
+
+    logrotate: PackageInstallResult | None = None
+    fail2ban: PackageInstallResult | None = None
+    logrotate_config: list[LogrotateResult] = Field(
+        default_factory=list,
+        description="Результаты настройки ротации отдельных файлов логов.",
+    )
+    journald: JournaldResult | None = Field(
+        default=None,
+        description="Результат настройки systemd-journald.",
+    )
+    fail2ban_config: Fail2BanResult | None = None
+    dockerd: DockerDaemonResult | None = None
+    freed_bytes: int = 0
