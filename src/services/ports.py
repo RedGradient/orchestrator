@@ -14,8 +14,8 @@ ALLOWED_SERVICES = {
     "nginx": "HTTP-сервис может быть доступен из интернета.",
 }
 SENSITIVE_SERVICES = {
-    "postgres": ("PostgreSQL не должен быть доступен из интернета."),
-    "redis": ("Redis не должен быть доступен из интернета."),
+    "postgres": "PostgreSQL не должен быть доступен из интернета.",
+    "redis": "Redis не должен быть доступен из интернета.",
 }
 
 

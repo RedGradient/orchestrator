@@ -25,6 +25,9 @@ ignore = [
     "SIM108",
     "SIM102",
 ]
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E501"]
+
 
 [tool.ruff.format]
 quote-style = "double"
