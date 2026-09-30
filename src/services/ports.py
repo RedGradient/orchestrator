@@ -9,6 +9,10 @@ from src.services.helpers.ssh import run_command
 
 DOCKER_PROXY = "docker-proxy"
 
+ALLOWED_SERVICES = {
+    "sshd": "SSH должен оставаться доступным для удалённого администрирования.",
+    "nginx": "HTTP-сервис может быть доступен из интернета.",
+}
 SENSITIVE_SERVICES = {
     "postgres": ("PostgreSQL не должен быть доступен из интернета."),
     "redis": ("Redis не должен быть доступен из интернета."),
@@ -116,10 +120,14 @@ def recommend_port_closure(
         if sensitive_service.lower() in service.lower():
             return ShouldClose.YES, message
 
-    if service == DOCKER_PROXY:
-        return ShouldClose.UNKNOWN, "Не удалось определить сервис."
+    for allowed_service, message in ALLOWED_SERVICES.items():
+        if allowed_service.lower() in service.lower():
+            return ShouldClose.NO, message
 
-    return ShouldClose.NO, "Для этого сервиса не установлено каких-либо ограничений."
+    return (
+        ShouldClose.UNKNOWN,
+        "Не удалось определить сервис или правила для этого сервиса не настроены.",
+    )
 
 
 def _parse_docker_process(output: str) -> str:
