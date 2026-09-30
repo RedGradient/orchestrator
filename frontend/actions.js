@@ -27,6 +27,13 @@ export const ACTIONS = [
     description:
         "Настраивает и выполняет ротацию логов на удалённом сервере, ограничивает их размер и освобождает дисковое пространство, сохраняя последние записи логов.",
     apiCommand: "logs_cleanup",
+  },
+  {
+    id: "ports",
+    title: "Ports Checker",
+    description:
+        "Список портов, доступных из интернета.",
+    apiCommand: "ports",
   }
 ];
 
@@ -337,6 +344,9 @@ function renderCommandResult(actionId, payload) {
   if (actionId === "logs_cleanup") {
     return renderLogsCleanupResult(payload.result || payload);
   }
+  if (actionId === "ports") {
+    return renderPortsCheckResult(payload.result || payload);
+  }
   const pre = document.createElement("pre");
   pre.className = "result-json";
   pre.textContent = JSON.stringify(payload, null, 2);
@@ -555,6 +565,111 @@ function renderLogsCleanupResult(result) {
   freed.textContent = `Освобождено: ${formatByteSize(freedBytes)}`;
 
   wrap.append(freed);
+
+  return wrap;
+}
+
+function renderPortsCheckResult(result) {
+  const wrap = document.createElement("div");
+  wrap.className = "ports-result";
+
+  if (!result) {
+    const empty = document.createElement("p");
+    empty.textContent = "Результат проверки портов отсутствует.";
+    wrap.append(empty);
+    return wrap;
+  }
+
+  if (result.host || result.status) {
+    const list = document.createElement("dl");
+
+    const addRow = (label, value) => {
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+
+      const dd = document.createElement("dd");
+      dd.textContent = value;
+
+      list.append(dt, dd);
+    };
+
+    if (result.host) {
+      addRow("Хост", result.host);
+    }
+
+    if (result.status) {
+      addRow(
+        "Статус",
+        result.status === "success" ? "Проверка выполнена успешно" : result.status
+      );
+    }
+
+    wrap.append(list);
+  }
+
+  const ports = Array.isArray(result.ports) ? result.ports : [];
+
+  if (ports.length) {
+    const heading = document.createElement("h4");
+    heading.textContent = "Обнаруженные открытые порты";
+    wrap.append(heading);
+
+    const portsList = document.createElement("ul");
+    portsList.className = "ports-list";
+
+    ports.forEach((item) => {
+      const entry = document.createElement("li");
+      entry.className = "port-item";
+
+      const port = document.createElement("strong");
+      port.textContent = "Порт " + String(item.port);
+      entry.append(port);
+
+      const service = document.createElement("div");
+      service.textContent =
+        "Сервис: " + (item.service || "Неизвестный сервис");
+      entry.append(service);
+
+      const docker = document.createElement("div");
+      docker.textContent = "Docker: " + (item.is_docker ? "Да" : "Нет");
+      entry.append(docker);
+
+      const status = document.createElement("div");
+      status.className =
+        item.should_close === "yes"
+          ? "port-status port-status-warning"
+          : "port-status port-status-ok";
+
+      status.textContent =
+        item.should_close === "yes"
+          ? "Рекомендуется закрыть порт"
+          : "Дополнительное ограничение не требуется";
+
+      entry.append(status);
+
+      if (item.reason) {
+        const reason = document.createElement("div");
+        reason.className = "port-reason";
+        reason.textContent = item.reason;
+        entry.append(reason);
+      }
+
+      portsList.append(entry);
+    });
+
+    wrap.append(portsList);
+  } else {
+    const empty = document.createElement("p");
+    empty.textContent = "Открытые порты не обнаружены.";
+    wrap.append(empty);
+  }
+
+  if (result.error) {
+    const error = document.createElement("p");
+    error.className = "error";
+    error.textContent = "Ошибка проверки: " + result.error;
+    wrap.append(error);
+  }
 
   return wrap;
 }
