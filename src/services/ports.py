@@ -34,7 +34,7 @@ class DockerPortProcess:
     service: str
 
 
-async def ports_showup(conn: SSHClientConnection) -> PortsCheckResult:
+async def check_ports(conn: SSHClientConnection) -> PortsCheckResult:
     """Проверяет открытые порты хоста и возвращает рекомендации по их закрытию."""
 
     # Получить все порты, видимые из интернета

@@ -27,7 +27,7 @@ from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
 from src.services.host import create_host, list_hosts
 from src.services.logs import logs_cleanup
-from src.services.ports import ports_showup
+from src.services.ports import check_ports
 from src.services.swap import try_create_swap
 from src.session import get_session
 
@@ -79,7 +79,7 @@ async def run_command(
             result = await logs_cleanup(conn)
 
         elif request.command == Command.PORTS:
-            result = await ports_showup(conn)
+            result = await check_ports(conn)
 
         else:
             raise Exception("Неизвестная команда")
