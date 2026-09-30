@@ -68,6 +68,7 @@ class Command(StrEnum):
     POSTGRES_BACKUP = "postgres_backup"
     CREATE_SWAP = "create_swap"
     LOGS_CLEANUP = "logs_cleanup"
+    PORTS = "ports"
 
 
 class CommandRequest(BaseModel):
@@ -193,3 +194,21 @@ class LogsCleanupResult(BaseModel):
     fail2ban_config: Fail2BanResult | None = None
     dockerd: DockerDaemonResult | None = None
     freed_bytes: int = 0
+
+
+class ShouldClose(StrEnum):
+    YES = "yes"
+    NO = "no"
+    UNKNOWN = "unknown"
+
+
+class PortCheckItem(BaseModel):
+    port: int
+    service: str
+    is_docker: bool
+    should_close: ShouldClose
+    reason: str
+
+
+class PortsCheckResult(BaseModel):
+    ports: list[PortCheckItem] = Field(default_factory=list)
