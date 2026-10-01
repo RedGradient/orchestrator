@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import asyncssh
-from fastapi import Depends, FastAPI, status
+from fastapi import Depends, FastAPI, Request, status
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,8 +32,10 @@ from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
 from src.services.host import create_host, list_hosts
 from src.services.logs import logs_cleanup
+from src.services.operation_events import stream_operation_events
 from src.services.operations import (
     create_operation,
+    ensure_operation_exists,
     get_operation,
     operation_to_item,
     queue_operation_tasks,
@@ -93,6 +96,22 @@ async def operation(
     """Возвращает REST source-of-truth snapshot Operation и её задач."""
 
     return operation_to_item(await get_operation(session, operation_id))
+
+
+@app.get("/api/operations/{operation_id}/events")
+async def operation_events(
+    operation_id: int,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> StreamingResponse:
+    """Передаёт изменения одной Operation через Server-Sent Events."""
+
+    await ensure_operation_exists(session, operation_id)
+    return StreamingResponse(
+        stream_operation_events(request, operation_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/command", status_code=status.HTTP_201_CREATED)

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 from ipaddress import IPv4Address
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -166,6 +166,16 @@ class OperationAccepted(BaseModel):
 
     operation_id: int
     status: OperationStatus
+
+
+class OperationEvent(BaseModel):
+    """Стабильная SSE-нагрузка для изменения состояния Operation или её Task."""
+
+    event: Literal["task.updated", "operation.updated", "operation.completed"]
+    operation_id: int
+    operation_status: OperationStatus
+    task_id: int | None = None
+    task_status: OperationTaskStatus | None = None
 
 
 class DockerPruneResult(BaseModel):

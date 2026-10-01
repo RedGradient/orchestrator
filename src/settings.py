@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://orchestrator:orchestrator@localhost:5432/orchestrator"
     celery_broker_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://localhost:6379/0"
     ssh_connection_timeout_seconds: float = Field(default=15.0, gt=0)
     ssh_action_timeout_seconds: float = Field(default=900.0, gt=0)
 

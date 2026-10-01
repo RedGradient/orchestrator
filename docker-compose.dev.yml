@@ -38,6 +38,7 @@ services:
       POSTGRES_HOST: db
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - .:/app
     depends_on:
@@ -58,6 +59,7 @@ services:
       POSTGRES_HOST: db
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
       RUN_MIGRATIONS: "false"
     volumes:
       - .:/app

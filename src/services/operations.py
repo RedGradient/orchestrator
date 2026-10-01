@@ -93,6 +93,16 @@ async def get_operation(session: AsyncSession, operation_id: int) -> Operation:
     return operation
 
 
+async def ensure_operation_exists(session: AsyncSession, operation_id: int) -> None:
+    """Проверяет существование Operation без загрузки её задач и хостов."""
+
+    operation_id_found = await session.scalar(
+        select(Operation.id).where(Operation.id == operation_id)
+    )
+    if operation_id_found is None:
+        raise OperationNotFoundError(operation_id)
+
+
 async def claim_operation_task(
     session: AsyncSession,
     operation_task_id: int,

@@ -1,10 +1,15 @@
 import asyncio
+import logging
 
 from src.celery_app import celery_app
-from src.models import OperationTaskStatus
+from src.models import Operation, OperationStatus, OperationTask, OperationTaskStatus
+from src.schemas import OperationEvent
+from src.services.operation_events import publish_operation_event
 from src.services.operations import claim_operation_task, complete_operation_task
 from src.services.task_executor import execute_operation_task_action
 from src.session import SessionLocal, engine
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="orchestrator.execute_vps_task", ignore_result=True)
@@ -22,6 +27,7 @@ async def run_operation_task(operation_task_id: int) -> None:
             task = await claim_operation_task(session, operation_task_id)
             if task is None:
                 return
+            await publish_task_state(session, task)
 
             try:
                 result = await execute_operation_task_action(task)
@@ -46,5 +52,43 @@ async def run_operation_task(operation_task_id: int) -> None:
                     status=OperationTaskStatus.SUCCEEDED,
                     result=result,
                 )
+            await publish_task_state(session, task)
     finally:
         await engine.dispose()
+
+
+async def publish_task_state(session, task: OperationTask) -> None:
+    """Публикует task и aggregate Operation state после успешного DB commit."""
+
+    operation = await session.get(Operation, task.operation_id)
+    assert operation is not None
+    try:
+        await publish_operation_event(
+            OperationEvent(
+                event="task.updated",
+                operation_id=operation.id,
+                operation_status=operation.status,
+                task_id=task.id,
+                task_status=task.status,
+            )
+        )
+        event_name = (
+            "operation.completed"
+            if operation.status
+            in {
+                OperationStatus.SUCCEEDED,
+                OperationStatus.FAILED,
+                OperationStatus.PARTIAL_FAILURE,
+                OperationStatus.CANCELLED,
+            }
+            else "operation.updated"
+        )
+        await publish_operation_event(
+            OperationEvent(
+                event=event_name,
+                operation_id=operation.id,
+                operation_status=operation.status,
+            )
+        )
+    except Exception:
+        logger.exception("Could not publish state event for operation task %s", task.id)
