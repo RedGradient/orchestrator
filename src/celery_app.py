@@ -11,6 +11,7 @@ celery_app.conf.update(
     accept_content=["json"],
     broker_connection_retry_on_startup=True,
     enable_utc=True,
+    include=["src.worker_tasks"],
     result_serializer="json",
     task_ignore_result=True,
     task_serializer="json",

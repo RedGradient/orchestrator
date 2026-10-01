@@ -1,12 +1,14 @@
 from collections import Counter
+from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.exceptions import HostsNotFoundError, OperationNotFoundError
 from src.models import Host, Operation, OperationStatus, OperationTask, OperationTaskStatus
 from src.schemas import (
+    Command,
     CreateOperationRequest,
     HostItem,
     OperationItem,
@@ -61,6 +63,73 @@ async def get_operation(session: AsyncSession, operation_id: int) -> Operation:
     return operation
 
 
+async def claim_operation_task(
+    session: AsyncSession,
+    operation_task_id: int,
+) -> OperationTask | None:
+    """Атомарно переводит queued-задачу в running для одного Celery worker."""
+
+    started_at = datetime.now(UTC)
+    claimed_task_id = await session.scalar(
+        update(OperationTask)
+        .where(
+            OperationTask.id == operation_task_id,
+            OperationTask.status == OperationTaskStatus.QUEUED,
+        )
+        .values(status=OperationTaskStatus.RUNNING, started_at=started_at)
+        .returning(OperationTask.id)
+    )
+    if claimed_task_id is None:
+        return None
+
+    task = await session.scalar(
+        select(OperationTask)
+        .where(OperationTask.id == claimed_task_id)
+        .options(selectinload(OperationTask.host))
+    )
+    assert task is not None
+    await _refresh_operation_status(session, task.operation_id)
+    await session.commit()
+    return task
+
+
+async def complete_operation_task(
+    session: AsyncSession,
+    operation_task_id: int,
+    *,
+    status: OperationTaskStatus,
+    result: dict[str, object] | None = None,
+    error: str | None = None,
+) -> bool:
+    """Завершает запущенную задачу и обновляет агрегированный статус Operation."""
+
+    if status not in {
+        OperationTaskStatus.SUCCEEDED,
+        OperationTaskStatus.FAILED,
+        OperationTaskStatus.TIMEOUT,
+    }:
+        raise ValueError(f"{status.value} is not a completion status")
+
+    task = await session.get(OperationTask, operation_task_id)
+    if task is None:
+        return False
+
+    task_status: OperationTaskStatus = task.status  # type: ignore
+    if task_status not in {
+        OperationTaskStatus.RUNNING,
+        OperationTaskStatus.CANCELLATION_REQUESTED,
+    }:
+        return False
+
+    task.status = status
+    task.result = result
+    task.error = error
+    task.finished_at = datetime.now(UTC)
+    await _refresh_operation_status(session, task.operation_id)
+    await session.commit()
+    return True
+
+
 def operation_to_item(operation: Operation) -> OperationItem:
     """Преобразует загруженную Operation в REST source-of-truth snapshot."""
 
@@ -68,7 +137,7 @@ def operation_to_item(operation: Operation) -> OperationItem:
         OperationTaskItem(
             id=task.id,
             host=HostItem.model_validate(task.host),
-            command=task.command,
+            command=Command(task.command),
             parameters=task.parameters,
             status=task.status,
             result=task.result,
@@ -105,3 +174,45 @@ def operation_progress(tasks: list[OperationTask]) -> OperationProgress:
         cancellation_requested=counts[OperationTaskStatus.CANCELLATION_REQUESTED.value],
         cancelled=counts[OperationTaskStatus.CANCELLED.value],
     )
+
+
+async def _refresh_operation_status(session: AsyncSession, operation_id: int) -> None:
+    operation = await session.scalar(
+        select(Operation).where(Operation.id == operation_id).options(selectinload(Operation.tasks))
+    )
+    assert operation is not None
+
+    status = derive_operation_status([task.status for task in operation.tasks])
+    operation.status = status
+    now = datetime.now(UTC)
+    if status == OperationStatus.RUNNING and operation.started_at is None:
+        operation.started_at = now
+    if status in {
+        OperationStatus.SUCCEEDED,
+        OperationStatus.FAILED,
+        OperationStatus.PARTIAL_FAILURE,
+        OperationStatus.CANCELLED,
+    }:
+        operation.finished_at = now
+
+
+def derive_operation_status(task_statuses: list[OperationTaskStatus]) -> OperationStatus:
+    """Вычисляет агрегированный статус без отдельного источника истины progress."""
+
+    statuses = set(task_statuses)
+    if not statuses or OperationTaskStatus.PENDING in statuses:
+        return OperationStatus.PENDING
+    if OperationTaskStatus.QUEUED in statuses:
+        return OperationStatus.QUEUED
+    if {
+        OperationTaskStatus.RUNNING,
+        OperationTaskStatus.CANCELLATION_REQUESTED,
+    } & statuses:
+        return OperationStatus.RUNNING
+    if statuses == {OperationTaskStatus.SUCCEEDED}:
+        return OperationStatus.SUCCEEDED
+    if statuses == {OperationTaskStatus.CANCELLED}:
+        return OperationStatus.CANCELLED
+    if statuses <= {OperationTaskStatus.FAILED, OperationTaskStatus.TIMEOUT}:
+        return OperationStatus.FAILED
+    return OperationStatus.PARTIAL_FAILURE
