@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from fastapi import Request
 from redis import asyncio as redis_async
 
+from src.models import Operation, OperationStatus, OperationTask
 from src.schemas import OperationEvent
 from src.settings import settings
 
@@ -22,6 +23,43 @@ async def publish_operation_event(event: OperationEvent) -> None:
         await redis.publish(operation_channel(event.operation_id), event.model_dump_json())
     finally:
         await redis.aclose()
+
+
+async def publish_task_updated(task: OperationTask, operation: Operation) -> None:
+    """Публикует изменение одной Task после её сохранения в PostgreSQL."""
+
+    await publish_operation_event(
+        OperationEvent(
+            event="task.updated",
+            operation_id=operation.id,
+            operation_status=operation.status,
+            task_id=task.id,
+            task_status=task.status,
+        )
+    )
+
+
+async def publish_operation_updated(operation: Operation) -> None:
+    """Публикует aggregate state Operation, включая её terminal-состояние."""
+
+    event_name = (
+        "operation.completed"
+        if operation.status
+        in {
+            OperationStatus.SUCCEEDED,
+            OperationStatus.FAILED,
+            OperationStatus.PARTIAL_FAILURE,
+            OperationStatus.CANCELLED,
+        }
+        else "operation.updated"
+    )
+    await publish_operation_event(
+        OperationEvent(
+            event=event_name,
+            operation_id=operation.id,
+            operation_status=operation.status,
+        )
+    )
 
 
 async def stream_operation_events(

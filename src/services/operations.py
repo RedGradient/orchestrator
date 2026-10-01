@@ -103,6 +103,38 @@ async def ensure_operation_exists(session: AsyncSession, operation_id: int) -> N
         raise OperationNotFoundError(operation_id)
 
 
+async def cancel_operation(
+    session: AsyncSession,
+    operation_id: int,
+) -> tuple[Operation, list[OperationTask]]:
+    """Отменяет не начатые задачи и запрашивает отмену уже выполняющихся."""
+
+    statement = (
+        select(Operation)
+        .where(Operation.id == operation_id)
+        .options(selectinload(Operation.tasks).selectinload(OperationTask.host))
+    )
+    operation = await session.scalar(statement)
+    if operation is None:
+        raise OperationNotFoundError(operation_id)
+
+    now = datetime.now(UTC)
+    changed_tasks: list[OperationTask] = []
+    for task in operation.tasks:
+        if task.status in {OperationTaskStatus.PENDING, OperationTaskStatus.QUEUED}:
+            task.status = OperationTaskStatus.CANCELLED
+            task.finished_at = now
+            changed_tasks.append(task)
+        elif task.status == OperationTaskStatus.RUNNING:
+            task.status = OperationTaskStatus.CANCELLATION_REQUESTED
+            changed_tasks.append(task)
+
+    if changed_tasks:
+        await _refresh_operation_status(session, operation_id)
+        await session.commit()
+    return operation, changed_tasks
+
+
 async def claim_operation_task(
     session: AsyncSession,
     operation_task_id: int,

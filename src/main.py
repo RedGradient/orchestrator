@@ -32,8 +32,13 @@ from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
 from src.services.host import create_host, list_hosts
 from src.services.logs import logs_cleanup
-from src.services.operation_events import stream_operation_events
+from src.services.operation_events import (
+    publish_operation_updated,
+    publish_task_updated,
+    stream_operation_events,
+)
 from src.services.operations import (
+    cancel_operation,
     create_operation,
     ensure_operation_exists,
     get_operation,
@@ -112,6 +117,24 @@ async def operation_events(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/api/operations/{operation_id}/cancel")
+async def cancel_vps_operation(
+    operation_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OperationItem:
+    """Отменяет ещё не начатые задачи и запрашивает отмену running-задач."""
+
+    operation, changed_tasks = await cancel_operation(session, operation_id)
+    if changed_tasks:
+        try:
+            for task in changed_tasks:
+                await publish_task_updated(task, operation)
+            await publish_operation_updated(operation)
+        except Exception:
+            logger.exception("Could not publish cancellation events for operation %s", operation_id)
+    return operation_to_item(operation)
 
 
 @app.post("/api/command", status_code=status.HTTP_201_CREATED)

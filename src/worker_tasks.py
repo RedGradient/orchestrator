@@ -2,9 +2,8 @@ import asyncio
 import logging
 
 from src.celery_app import celery_app
-from src.models import Operation, OperationStatus, OperationTask, OperationTaskStatus
-from src.schemas import OperationEvent
-from src.services.operation_events import publish_operation_event
+from src.models import Operation, OperationTask, OperationTaskStatus
+from src.services.operation_events import publish_operation_updated, publish_task_updated
 from src.services.operations import claim_operation_task, complete_operation_task
 from src.services.task_executor import execute_operation_task_action
 from src.session import SessionLocal, engine
@@ -63,32 +62,7 @@ async def publish_task_state(session, task: OperationTask) -> None:
     operation = await session.get(Operation, task.operation_id)
     assert operation is not None
     try:
-        await publish_operation_event(
-            OperationEvent(
-                event="task.updated",
-                operation_id=operation.id,
-                operation_status=operation.status,
-                task_id=task.id,
-                task_status=task.status,
-            )
-        )
-        event_name = (
-            "operation.completed"
-            if operation.status
-            in {
-                OperationStatus.SUCCEEDED,
-                OperationStatus.FAILED,
-                OperationStatus.PARTIAL_FAILURE,
-                OperationStatus.CANCELLED,
-            }
-            else "operation.updated"
-        )
-        await publish_operation_event(
-            OperationEvent(
-                event=event_name,
-                operation_id=operation.id,
-                operation_status=operation.status,
-            )
-        )
+        await publish_task_updated(task, operation)
+        await publish_operation_updated(operation)
     except Exception:
         logger.exception("Could not publish state event for operation task %s", task.id)
