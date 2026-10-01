@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import type { Host } from "@/lib/api-types"
+import { hostDisplayName } from "@/lib/hosts"
 
 export interface HostsSelectorProps {
   hosts: Host[]
@@ -17,10 +18,7 @@ export interface HostsSelectorProps {
   onRetry: () => void
   onSelectionChange: (selected: Set<number>) => void
   onHostCreated: () => Promise<void> | void
-}
-
-function hostName(host: Host): string {
-  return host.label || `${host.username}@${host.ip}`
+  disabled?: boolean
 }
 
 export function HostsSelector({
@@ -31,6 +29,7 @@ export function HostsSelector({
   onRetry,
   onSelectionChange,
   onHostCreated,
+  disabled = false,
 }: HostsSelectorProps) {
   const [query, setQuery] = useState("")
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -86,6 +85,7 @@ export function HostsSelector({
             size="sm"
             onClick={() => setIsFormOpen((open) => !open)}
             aria-expanded={isFormOpen}
+            disabled={disabled}
           >
             <Plus aria-hidden="true" className="size-4" />
             Добавить
@@ -105,13 +105,14 @@ export function HostsSelector({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Поиск по названию, пользователю или IP"
+              disabled={disabled}
             />
           </label>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            disabled={filteredHosts.length === 0}
+            disabled={disabled || filteredHosts.length === 0}
             onClick={toggleVisibleHosts}
           >
             {allVisibleSelected ? "Снять видимые" : "Выбрать видимые"}
@@ -119,7 +120,7 @@ export function HostsSelector({
         </div>
       </div>
 
-      {isFormOpen ? (
+      {isFormOpen && !disabled ? (
         <HostRegistrationForm onCreated={onHostCreated} onClose={() => setIsFormOpen(false)} />
       ) : null}
 
@@ -163,13 +164,16 @@ export function HostsSelector({
                 <Checkbox
                   checked={selectedHostIds.has(host.id)}
                   onChange={() => toggleHost(host.id)}
-                  aria-label={`Выбрать ${hostName(host)}`}
+                  aria-label={`Выбрать ${hostDisplayName(host)}`}
+                  disabled={disabled}
                 />
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   <Server aria-hidden="true" className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{hostName(host)}</span>
+                  <span className="block truncate text-sm font-medium">
+                    {hostDisplayName(host)}
+                  </span>
                   {host.label ? (
                     <span className="block truncate font-mono text-xs text-muted-foreground">
                       {host.username}@{host.ip}

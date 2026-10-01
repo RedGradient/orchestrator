@@ -17,9 +17,14 @@ const actionIcons = {
 export interface ActionsSelectorProps {
   selectedActions: ReadonlySet<Command>
   onSelectionChange: (selected: Set<Command>) => void
+  disabled?: boolean
 }
 
-export function ActionsSelector({ selectedActions, onSelectionChange }: ActionsSelectorProps) {
+export function ActionsSelector({
+  selectedActions,
+  onSelectionChange,
+  disabled = false,
+}: ActionsSelectorProps) {
   function toggleAction(command: Command) {
     const next = new Set(selectedActions)
     if (next.has(command)) {
@@ -47,6 +52,7 @@ export function ActionsSelector({ selectedActions, onSelectionChange }: ActionsS
           type="button"
           className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={toggleAll}
+          disabled={disabled}
         >
           {selectedActions.size === actions.length ? "Снять все" : "Выбрать все"}
         </button>
@@ -69,6 +75,7 @@ export function ActionsSelector({ selectedActions, onSelectionChange }: ActionsS
                   onChange={() => toggleAction(action.command)}
                   aria-label={`Выбрать действие ${action.title}`}
                   className="mt-1"
+                  disabled={disabled}
                 />
                 <span
                   className={cn(

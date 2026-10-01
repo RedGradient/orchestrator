@@ -1,18 +1,33 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { ActionsSelector } from "@/components/actions-selector"
 import { HostsSelector } from "@/components/hosts-selector"
+import { OperationPreview } from "@/components/operation-preview"
 import { PageHeader } from "@/components/page-header"
+import { actions } from "@/lib/actions"
 import { ApiError, api } from "@/lib/api-client"
 import type { Command, Host } from "@/lib/api-types"
 
 export function ActionsPage() {
+  const navigate = useNavigate()
   const [hosts, setHosts] = useState<Host[]>([])
   const [selectedHostIds, setSelectedHostIds] = useState<Set<number>>(new Set())
   const [selectedActions, setSelectedActions] = useState<Set<Command>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadVersion, setReloadVersion] = useState(0)
+  const [isCreating, setIsCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  const selectedHosts = useMemo(
+    () => hosts.filter((host) => selectedHostIds.has(host.id)),
+    [hosts, selectedHostIds],
+  )
+  const selectedActionDefinitions = useMemo(
+    () => actions.filter((action) => selectedActions.has(action.command)),
+    [selectedActions],
+  )
 
   const reloadHosts = useCallback(() => {
     setIsLoading(true)
@@ -47,6 +62,30 @@ export function ActionsPage() {
     return () => controller.abort()
   }, [reloadVersion])
 
+  async function createOperation() {
+    if (selectedHosts.length === 0 || selectedActionDefinitions.length === 0 || isCreating) {
+      return
+    }
+
+    setIsCreating(true)
+    setCreateError(null)
+    try {
+      const accepted = await api.createOperation({
+        host_ids: selectedHosts.map((host) => host.id),
+        actions: selectedActionDefinitions.map((action) => ({
+          command: action.command,
+          parameters: {},
+        })),
+      })
+      navigate(`/operations/${accepted.operation_id}`)
+    } catch (caught) {
+      setCreateError(
+        caught instanceof ApiError ? caught.message : "Не удалось создать операцию.",
+      )
+      setIsCreating(false)
+    }
+  }
+
   return (
     <main>
       <PageHeader
@@ -64,12 +103,22 @@ export function ActionsPage() {
           onRetry={reloadHosts}
           onSelectionChange={setSelectedHostIds}
           onHostCreated={reloadHosts}
+          disabled={isCreating}
         />
         <ActionsSelector
           selectedActions={selectedActions}
           onSelectionChange={setSelectedActions}
+          disabled={isCreating}
         />
       </div>
+
+      <OperationPreview
+        hosts={selectedHosts}
+        actions={selectedActionDefinitions}
+        isCreating={isCreating}
+        error={createError}
+        onCreate={createOperation}
+      />
     </main>
   )
 }
