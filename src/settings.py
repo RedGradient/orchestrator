@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +18,9 @@ class Settings(BaseSettings):
     app_port: int = 8000
 
     database_url: str = "postgresql+psycopg://orchestrator:orchestrator@localhost:5432/orchestrator"
+    celery_broker_url: str = "redis://localhost:6379/0"
+    ssh_connection_timeout_seconds: float = Field(default=15.0, gt=0)
+    ssh_action_timeout_seconds: float = Field(default=900.0, gt=0)
 
     @property
     def postgres_dsn(self) -> str:
