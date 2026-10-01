@@ -161,6 +161,13 @@ class OperationItem(BaseModel):
     tasks: list[OperationTaskItem]
 
 
+class OperationAccepted(BaseModel):
+    """Ответ на создание операции без ожидания выполнения SSH-действий."""
+
+    operation_id: int
+    status: OperationStatus
+
+
 class DockerPruneResult(BaseModel):
     deleted_containers: list[str] = Field(default_factory=list)
     deleted_volumes: list[str] = Field(default_factory=list)

@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Annotated, Any
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.exc_handlers import register_exception_handlers
 from src.exceptions import HostNotFoundError
-from src.models import Host
+from src.models import Host, OperationStatus
 from src.schemas import (
     CheckHistoryItem,
     CheckRequest,
@@ -18,7 +19,10 @@ from src.schemas import (
     CommandRequest,
     CommandResponse,
     CommandStatus,
+    CreateOperationRequest,
     HostItem,
+    OperationAccepted,
+    OperationItem,
     RegisterHostRequest,
     RegisterHostResponse,
 )
@@ -27,9 +31,18 @@ from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
 from src.services.host import create_host, list_hosts
 from src.services.logs import logs_cleanup
+from src.services.operations import (
+    create_operation,
+    get_operation,
+    operation_to_item,
+    queue_operation_tasks,
+)
 from src.services.ports import check_ports
 from src.services.swap import try_create_swap
 from src.session import get_session
+from src.worker_tasks import execute_vps_task
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -49,6 +62,37 @@ async def checks(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[CheckHistoryItem]:
     return await list_checks(session)
+
+
+@app.post("/api/operations", status_code=status.HTTP_202_ACCEPTED)
+async def create_vps_operation(
+    request: CreateOperationRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OperationAccepted:
+    """Создаёт batch Operation и немедленно возвращает её идентификатор."""
+
+    operation = await create_operation(session, request)
+    task_ids = await queue_operation_tasks(session, operation.id)
+    for operation_task_id in task_ids:
+        try:
+            execute_vps_task.delay(operation_task_id)
+        except Exception:
+            logger.exception(
+                "Could not publish operation task %s to Celery; it remains queued",
+                operation_task_id,
+            )
+
+    return OperationAccepted(operation_id=operation.id, status=OperationStatus.QUEUED)
+
+
+@app.get("/api/operations/{operation_id}")
+async def operation(
+    operation_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OperationItem:
+    """Возвращает REST source-of-truth snapshot Operation и её задач."""
+
+    return operation_to_item(await get_operation(session, operation_id))
 
 
 @app.post("/api/command", status_code=status.HTTP_201_CREATED)

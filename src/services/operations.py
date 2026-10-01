@@ -5,12 +5,17 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.exceptions import HostsNotFoundError, OperationNotFoundError
+from src.exceptions import (
+    HostsNotFoundError,
+    OperationNotFoundError,
+    UnsupportedOperationParametersError,
+)
 from src.models import Host, Operation, OperationStatus, OperationTask, OperationTaskStatus
 from src.schemas import (
     Command,
     CreateOperationRequest,
     HostItem,
+    OperationActionRequest,
     OperationItem,
     OperationProgress,
     OperationTaskItem,
@@ -23,6 +28,7 @@ async def create_operation(
 ) -> Operation:
     """Создаёт Operation и её pending-задачи в одной БД-транзакции."""
 
+    validate_action_parameters(request.actions)
     hosts = (await session.scalars(select(Host).where(Host.id.in_(request.host_ids)))).all()
     hosts_by_id = {host.id: host for host in hosts}
     missing_host_ids = [host_id for host_id in request.host_ids if host_id not in hosts_by_id]
@@ -47,6 +53,30 @@ async def create_operation(
     session.add_all(tasks)
     await session.commit()
     return operation
+
+
+async def queue_operation_tasks(session: AsyncSession, operation_id: int) -> list[int]:
+    """Переводит pending-задачи Operation в queued и возвращает их ID для Celery."""
+
+    task_ids = (
+        await session.scalars(
+            update(OperationTask)
+            .where(
+                OperationTask.operation_id == operation_id,
+                OperationTask.status == OperationTaskStatus.PENDING,
+            )
+            .values(status=OperationTaskStatus.QUEUED)
+            .returning(OperationTask.id)
+        )
+    ).all()
+    if not task_ids:
+        return []
+
+    await session.execute(
+        update(Operation).where(Operation.id == operation_id).values(status=OperationStatus.QUEUED)
+    )
+    await session.commit()
+    return task_ids
 
 
 async def get_operation(session: AsyncSession, operation_id: int) -> Operation:
@@ -114,8 +144,7 @@ async def complete_operation_task(
     if task is None:
         return False
 
-    task_status: OperationTaskStatus = task.status  # type: ignore
-    if task_status not in {
+    if task.status not in {
         OperationTaskStatus.RUNNING,
         OperationTaskStatus.CANCELLATION_REQUESTED,
     }:
@@ -216,3 +245,11 @@ def derive_operation_status(task_statuses: list[OperationTaskStatus]) -> Operati
     if statuses <= {OperationTaskStatus.FAILED, OperationTaskStatus.TIMEOUT}:
         return OperationStatus.FAILED
     return OperationStatus.PARTIAL_FAILURE
+
+
+def validate_action_parameters(actions: list[OperationActionRequest]) -> None:
+    """Не допускает постановку задач с параметрами, не поддержанными actions."""
+
+    for action in actions:
+        if action.parameters:
+            raise UnsupportedOperationParametersError(action.command.value)

@@ -36,3 +36,11 @@ class OperationNotFoundError(Exception):
     def __init__(self, operation_id: int):
         self.operation_id = operation_id
         super().__init__(f"Operation with id {operation_id} not found")
+
+
+class UnsupportedOperationParametersError(Exception):
+    """Переданные параметры пока не поддерживаются выбранным действием."""
+
+    def __init__(self, command: str):
+        self.command = command
+        super().__init__(f"Command {command!r} does not support parameters")
