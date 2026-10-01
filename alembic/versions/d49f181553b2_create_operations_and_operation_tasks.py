@@ -5,19 +5,20 @@ Revises: ac78f4283d89
 Create Date: 2026-10-01 17:45:00.000000
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "d49f181553b2"
-down_revision: Union[str, Sequence[str], None] = "ac78f4283d89"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "ac78f4283d89"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
-operation_status = sa.Enum(
+operation_status = postgresql.ENUM(
     "pending",
     "queued",
     "running",
@@ -26,8 +27,9 @@ operation_status = sa.Enum(
     "partial_failure",
     "cancelled",
     name="operation_status",
+    create_type=False,
 )
-operation_task_status = sa.Enum(
+operation_task_status = postgresql.ENUM(
     "pending",
     "queued",
     "running",
@@ -37,6 +39,7 @@ operation_task_status = sa.Enum(
     "cancellation_requested",
     "cancelled",
     name="operation_task_status",
+    create_type=False,
 )
 
 

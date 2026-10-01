@@ -75,9 +75,11 @@ class Check(Base):
         Enum(
             CheckTrigger,
             name="check_trigger",
-            native_enum=True,
+            native_enum=False,
+            length=16,
             values_callable=lambda enum: [item.value for item in enum],
         ),
+        nullable=False,
     )
     data: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
@@ -117,7 +119,8 @@ class Operation(Base):
         Enum(
             OperationStatus,
             name="operation_status",
-            native_enum=True,
+            native_enum=False,
+            length=32,
             values_callable=lambda enum: [item.value for item in enum],
         ),
         nullable=False,
@@ -155,7 +158,8 @@ class OperationTask(Base):
         Enum(
             OperationTaskStatus,
             name="operation_task_status",
-            native_enum=True,
+            native_enum=False,
+            length=32,
             values_callable=lambda enum: [item.value for item in enum],
         ),
         nullable=False,
