@@ -65,7 +65,7 @@ function jsonRequest(method: "POST", body?: unknown): RequestInit {
 }
 
 export const api = {
-  listHosts: () => request<Host[]>("/api/hosts"),
+  listHosts: (signal?: AbortSignal) => request<Host[]>("/api/hosts", { signal }),
   registerHost: (input: RegisterHostInput) =>
     request<RegisterHostResponse>("/api/host", jsonRequest("POST", input)),
   createOperation: (input: CreateOperationInput) =>
