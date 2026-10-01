@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import Response
 
 from src.exc_handlers import register_exception_handlers
 from src.exceptions import HostNotFoundError
@@ -51,6 +52,18 @@ from src.session import get_session
 from src.worker_tasks import execute_vps_task
 
 logger = logging.getLogger(__name__)
+
+
+class SPAStaticFiles(StaticFiles):
+    """Раздаёт index.html для клиентских маршрутов React Router."""
+
+    async def get_response(self, path: str, scope: dict[str, Any]) -> Response:
+        response = await super().get_response(path, scope)
+        is_client_route = scope["method"] == "GET" and "." not in Path(path).name
+        if response.status_code == status.HTTP_404_NOT_FOUND and is_client_route:
+            return await super().get_response("index.html", scope)
+        return response
+
 
 app = FastAPI()
 
@@ -190,6 +203,10 @@ async def register_host(
 
 app.mount(
     "/",
-    StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True),
+    SPAStaticFiles(
+        directory=Path(__file__).resolve().parent.parent / "frontend" / "dist",
+        html=True,
+        check_dir=False,
+    ),
     name="frontend",
 )
