@@ -1,5 +1,8 @@
 #!/bin/sh
 set -eu
 
-alembic upgrade head
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+    alembic upgrade head
+fi
+
 exec "$@"

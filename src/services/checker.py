@@ -77,9 +77,7 @@ async def list_checks(session: AsyncSession, limit: int = 40) -> list[CheckHisto
         CheckHistoryItem(
             id=row.id,
             created_at=row.created_at,
-            trigger=row.trigger.value
-            if isinstance(row.trigger, CheckTrigger)
-            else str(row.trigger),
+            trigger=row.trigger.value,
             result=CheckResponse.model_validate(row.data),
         )
         for row in rows

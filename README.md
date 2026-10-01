@@ -30,6 +30,9 @@
 - HTTP-проверки через httpx, разбор DNS через dnspython, TLS через стандартную библиотеку
 - Асинхронный SQLAlchemy и psycopg, миграции Alembic, PostgreSQL 17
 - SSH к хостам через asyncssh
+- Redis и Celery: SSH-действия запускаются в фоновом worker-процессе;
+  состояние операции и отдельных задач хранится в PostgreSQL, а изменения
+  передаются клиенту через Server-Sent Events (SSE)
 - Страница на HTML, CSS и JavaScript
 - Docker Compose; в проде перед приложением стоит Caddy и Let's Encrypt
 
@@ -46,7 +49,16 @@ cp .env.example .env
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Страница: http://localhost:8000. Postgres опубликован на `localhost:5432`. При старте контейнер применяет миграции Alembic.
+Compose запускает `db`, `redis`, `app` и `worker`. Приложение применяет миграции
+Alembic при старте, а `worker` получает фоновые SSH-задачи через Redis.
+
+Страница: http://localhost:8000. Postgres опубликован на `localhost:5432`, Redis —
+на `localhost:6379`.
+
+Для запуска вне Compose укажите `DATABASE_URL`, `CELERY_BROKER_URL` и `REDIS_URL`.
+По умолчанию две последние переменные указывают на `redis://localhost:6379/0`.
+Таймауты SSH настраиваются переменными `SSH_CONNECTION_TIMEOUT_SECONDS` (15 секунд)
+и `SSH_ACTION_TIMEOUT_SECONDS` (900 секунд).
 
 ## Запуск в проде
 
@@ -69,4 +81,36 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
   Ответ: `{ "id", "ip", "username" }`
 - `POST /api/command` — выполнить действие на хосте  
   Тело: `{ "host_id": 1, "command": "docker_cleanup" }`  
-  Команды: `docker_cleanup`, `postgres_backup`, `create_swap`
+  Команды: `docker_cleanup`, `postgres_backup`, `create_swap`, `logs_cleanup`, `ports`
+
+### Фоновые операции с VPS
+
+`Operation` объединяет действия, запускаемые на выбранных хостах. Для каждой пары
+«хост — действие» создаётся отдельная задача, которую выполняет Celery worker.
+
+- `POST /api/operations` — создать операцию и поставить её задачи в очередь. Возвращает
+  `202 Accepted` и идентификатор операции:
+
+  ```json
+  {
+    "host_ids": [1, 2],
+    "actions": [
+      { "command": "ports", "parameters": {} },
+      { "command": "logs_cleanup", "parameters": {} }
+    ]
+  }
+  ```
+
+  Ответ: `{ "operation_id": 42, "status": "queued" }`.
+
+- `GET /api/operations/{operation_id}` — актуальный снимок операции: её статус,
+  счётчики прогресса, а также статус, результат или ошибку каждой дочерней задачи.
+- `GET /api/operations/{operation_id}/events` — SSE-поток событий
+  `task.updated`, `operation.updated` и `operation.completed`. После события
+  клиенту следует запрашивать актуальный снимок операции через `GET`.
+- `POST /api/operations/{operation_id}/cancel` — отменить ещё не начатые задачи и
+  запросить отмену выполняемых; возвращает обновлённый снимок операции.
+
+Статусы операции: `pending`, `queued`, `running`, `succeeded`, `failed`,
+`partial_failure`, `cancelled`. Статусы задач дополнительно включают `timeout` и
+`cancellation_requested`.
