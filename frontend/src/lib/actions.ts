@@ -33,3 +33,7 @@ export const actions: ActionDefinition[] = [
     description: "Проверяет доступные извне порты и формирует рекомендации по безопасности.",
   },
 ]
+
+export function actionTitle(command: Command): string {
+  return actions.find((action) => action.command === command)?.title ?? command
+}
