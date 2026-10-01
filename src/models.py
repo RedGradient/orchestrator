@@ -96,6 +96,7 @@ class Host(Base):
     __tablename__ = "hosts"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    label: Mapped[str | None] = mapped_column(String(255))
     ip: Mapped[str] = mapped_column(String(45), unique=True, nullable=False, index=True)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)

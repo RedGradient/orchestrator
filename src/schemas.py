@@ -69,6 +69,7 @@ class HostItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    label: str | None
     ip: str
     username: str
     created_at: datetime
@@ -189,15 +190,24 @@ class DockerPruneResult(BaseModel):
 
 
 class RegisterHostRequest(BaseModel):
+    label: str | None = Field(default=None, max_length=255)
     ip: IPv4Address
     username: str = Field(min_length=1)
     password: str = Field(min_length=1)
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def normalize_label(cls, label: object) -> object:
+        if isinstance(label, str):
+            return label.strip() or None
+        return label
 
 
 class RegisterHostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    label: str | None
     ip: str
     username: str
 

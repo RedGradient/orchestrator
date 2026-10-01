@@ -10,6 +10,7 @@ async def create_host(
     request: RegisterHostRequest,
 ) -> RegisterHostResponse:
     host = Host(
+        label=request.label,
         ip=str(request.ip),
         username=request.username,
         password=request.password,
@@ -21,6 +22,7 @@ async def create_host(
 
     return RegisterHostResponse(
         id=host.id,
+        label=host.label,
         ip=host.ip,
         username=host.username,
     )
