@@ -3,7 +3,9 @@ from enum import StrEnum
 from ipaddress import IPv4Address
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+
+from src.models import OperationStatus, OperationTaskStatus
 
 
 class CheckRequest(BaseModel):
@@ -63,6 +65,15 @@ class CheckHistoryItem(BaseModel):
     result: CheckResponse
 
 
+class HostItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ip: str
+    username: str
+    created_at: datetime
+
+
 class Command(StrEnum):
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
@@ -88,6 +99,68 @@ class CommandResponse(BaseModel):
     error: str | None = None
 
 
+class OperationActionRequest(BaseModel):
+    """Одно действие, которое будет выполнено на выбранных хостах."""
+
+    command: Command
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class CreateOperationRequest(BaseModel):
+    """Batch-запуск всех комбинаций выбранных хостов и действий."""
+
+    host_ids: list[int] = Field(min_length=1)
+    actions: list[OperationActionRequest] = Field(min_length=1)
+
+    @field_validator("host_ids")
+    @classmethod
+    def host_ids_must_be_unique(cls, host_ids: list[int]) -> list[int]:
+        if len(host_ids) != len(set(host_ids)):
+            raise ValueError("host_ids must not contain duplicates")
+        return host_ids
+
+
+class OperationProgress(BaseModel):
+    """Показывает количество задач Operation в каждом состоянии."""
+
+    total: int
+    pending: int
+    queued: int
+    running: int
+    succeeded: int
+    failed: int
+    timeout: int
+    cancellation_requested: int
+    cancelled: int
+
+
+class OperationTaskItem(BaseModel):
+    """Состояние, входные данные и итог одной задачи Operation."""
+
+    id: int
+    host: HostItem
+    command: Command
+    parameters: dict[str, Any]
+    status: OperationTaskStatus
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class OperationItem(BaseModel):
+    """Авторитетный REST-snapshot Operation вместе со всеми её задачами."""
+
+    id: int
+    status: OperationStatus
+    progress: OperationProgress
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    tasks: list[OperationTaskItem]
+
+
 class DockerPruneResult(BaseModel):
     deleted_containers: list[str] = Field(default_factory=list)
     deleted_volumes: list[str] = Field(default_factory=list)
@@ -110,15 +183,6 @@ class RegisterHostResponse(BaseModel):
     id: int
     ip: str
     username: str
-
-
-class HostItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    ip: str
-    username: str
-    created_at: datetime
 
 
 class SwapEntry(BaseModel):
