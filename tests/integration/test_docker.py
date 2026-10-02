@@ -39,3 +39,53 @@ async def test_docker_cleanup_stops_running_containers_gracefully(
     finally:
         await run_command(ssh_conn, f"docker rm -f {shlex.quote(container_name)} || true")
         await run_command(ssh_conn, f"rm -f -- {shlex.quote(marker_path)}")
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_docker_cleanup_removes_running_and_stopped_containers(
+    ssh_conn: SSHClientConnection,
+) -> None:
+    """Удаляет все контейнеры и возвращает их идентификаторы в результате."""
+
+    running_name = f"docker-cleanup-running-it-{uuid.uuid4().hex[:8]}"
+    stopped_name = f"docker-cleanup-stopped-it-{uuid.uuid4().hex[:8]}"
+
+    await run_command(ssh_conn, "sudo systemctl start docker")
+    await run_command(ssh_conn, f"docker pull {shlex.quote(ALPINE_IMAGE)}")
+    await run_command(
+        ssh_conn,
+        f"docker run -d --name {shlex.quote(running_name)} {shlex.quote(ALPINE_IMAGE)} sleep infinity",
+    )
+    await run_command(
+        ssh_conn,
+        f"docker create --name {shlex.quote(stopped_name)} {shlex.quote(ALPINE_IMAGE)} sleep infinity",
+    )
+    running_id = await run_command(
+        ssh_conn,
+        f"docker inspect --format '{{{{.Id}}}}' {shlex.quote(running_name)}",
+    )
+    stopped_id = await run_command(
+        ssh_conn,
+        f"docker inspect --format '{{{{.Id}}}}' {shlex.quote(stopped_name)}",
+    )
+
+    try:
+        result = await docker_cleanup(ssh_conn)
+
+        # Docker rm выводит сокращённые ID, тогда как docker inspect возвращает полные.
+        assert any(
+            running_id.startswith(container_id) for container_id in result.deleted_containers
+        )
+        assert any(
+            stopped_id.startswith(container_id) for container_id in result.deleted_containers
+        )
+        for container_name in (running_name, stopped_name):
+            inspect_result = await ssh_conn.run(
+                f"docker inspect {shlex.quote(container_name)}",
+                check=False,
+            )
+            assert inspect_result.exit_status != 0
+    finally:
+        await run_command(ssh_conn, f"docker rm -f {shlex.quote(running_name)} || true")
+        await run_command(ssh_conn, f"docker rm -f {shlex.quote(stopped_name)} || true")
