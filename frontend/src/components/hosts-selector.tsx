@@ -143,7 +143,7 @@ export function HostsSelector({
             disabled={disabled || filteredHosts.length === 0}
             onClick={toggleVisibleHosts}
           >
-            {allVisibleSelected ? "Снять видимые" : "Выбрать видимые"}
+            {allVisibleSelected ? "Снять все" : "Выбрать все"}
           </Button>
         </div>
       </div>
