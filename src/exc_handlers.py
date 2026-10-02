@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from src.exceptions import (
     CommandError,
     CommandOutputError,
+    HostIpAlreadyExistsError,
     HostNotFoundError,
     HostsNotFoundError,
     OperationNotFoundError,
@@ -49,6 +50,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=404,
             content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(HostIpAlreadyExistsError)
+    async def host_ip_already_exists_handler(
+        _request: Request,
+        exc: HostIpAlreadyExistsError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"detail": str(exc), "ip": exc.ip},
         )
 
     @app.exception_handler(HostsNotFoundError)

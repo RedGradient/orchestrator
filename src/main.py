@@ -4,14 +4,14 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import asyncssh
-from fastapi import Depends, FastAPI, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi import Depends, FastAPI, Query, Request, status
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import Response
 
 from src.exc_handlers import register_exception_handlers
-from src.exceptions import HostNotFoundError
-from src.models import Host, OperationStatus
+from src.models import OperationStatus
 from src.schemas import (
     CheckHistoryItem,
     CheckRequest,
@@ -23,14 +23,16 @@ from src.schemas import (
     CreateOperationRequest,
     HostItem,
     OperationAccepted,
+    OperationHistoryPage,
     OperationItem,
     RegisterHostRequest,
     RegisterHostResponse,
+    UpdateHostRequest,
 )
 from src.services.backup import postgres_dump
 from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
-from src.services.host import create_host, list_hosts
+from src.services.host import create_host, delete_host, get_active_host, list_hosts, update_host
 from src.services.logs import logs_cleanup
 from src.services.operation_events import (
     publish_operation_updated,
@@ -42,6 +44,7 @@ from src.services.operations import (
     create_operation,
     ensure_operation_exists,
     get_operation,
+    list_operations,
     operation_to_item,
     queue_operation_tasks,
 )
@@ -51,6 +54,18 @@ from src.session import get_session
 from src.worker_tasks import execute_vps_task
 
 logger = logging.getLogger(__name__)
+
+
+class SPAStaticFiles(StaticFiles):
+    """Раздаёт index.html для клиентских маршрутов React Router."""
+
+    async def get_response(self, path: str, scope: dict[str, Any]) -> Response:
+        response = await super().get_response(path, scope)
+        is_client_route = scope["method"] == "GET" and "." not in Path(path).name
+        if response.status_code == status.HTTP_404_NOT_FOUND and is_client_route:
+            return await super().get_response("index.html", scope)
+        return response
+
 
 app = FastAPI()
 
@@ -91,6 +106,32 @@ async def create_vps_operation(
             )
 
     return OperationAccepted(operation_id=operation.id, status=OperationStatus.QUEUED)
+
+
+@app.get("/api/operations")
+async def operations(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    query: Annotated[str | None, Query(max_length=255)] = None,
+    status_group: Annotated[
+        str | None,
+        Query(pattern="^(active|succeeded|failed|cancelled)$"),
+    ] = None,
+    days: Annotated[int | None, Query()] = None,
+) -> OperationHistoryPage:
+    """Возвращает историю запусков с фильтрами и пагинацией."""
+
+    if days not in {None, 1, 7, 30}:
+        days = None
+    return await list_operations(
+        session,
+        page=page,
+        page_size=page_size,
+        query=query,
+        status_group=status_group,
+        days=days,
+    )
 
 
 @app.get("/api/operations/{operation_id}")
@@ -142,8 +183,7 @@ async def run_command(
     request: CommandRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Any:
-    if (host := await session.get(Host, request.host_id)) is None:
-        raise HostNotFoundError(host_id=request.host_id)
+    host = await get_active_host(session, request.host_id)
 
     async with asyncssh.connect(
         str(host.ip),
@@ -188,8 +228,40 @@ async def register_host(
     return await create_host(session, request)
 
 
+@app.patch("/api/hosts/{host_id}")
+async def edit_host(
+    host_id: int,
+    request: UpdateHostRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> HostItem:
+    return await update_host(session, host_id, request)
+
+
+@app.delete("/api/hosts/{host_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_host(
+    host_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    await delete_host(session, host_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.get("/check.html", include_in_schema=False)
+async def legacy_check_page() -> RedirectResponse:
+    return RedirectResponse(url="/checks", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+
+
+@app.get("/action.html", include_in_schema=False)
+async def legacy_action_page() -> RedirectResponse:
+    return RedirectResponse(url="/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+
+
 app.mount(
     "/",
-    StaticFiles(directory=Path(__file__).resolve().parent.parent / "frontend", html=True),
+    SPAStaticFiles(
+        directory=Path(__file__).resolve().parent.parent / "frontend" / "dist",
+        html=True,
+        check_dir=False,
+    ),
     name="frontend",
 )

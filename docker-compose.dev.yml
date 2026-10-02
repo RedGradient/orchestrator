@@ -48,6 +48,22 @@ services:
         condition: service_healthy
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
+  frontend:
+    build:
+      context: .
+      target: frontend-build
+    working_dir: /frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_PROXY_TARGET: http://app:8000
+    volumes:
+      - ./frontend:/frontend
+      - frontend_node_modules:/frontend/node_modules
+    depends_on:
+      - app
+    command: npm run dev
+
   worker:
     build:
       context: .
@@ -72,3 +88,4 @@ services:
 
 volumes:
   postgres_data:
+  frontend_node_modules:

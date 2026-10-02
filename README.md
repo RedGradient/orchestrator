@@ -33,14 +33,19 @@
 - Redis и Celery: SSH-действия запускаются в фоновом worker-процессе;
   состояние операции и отдельных задач хранится в PostgreSQL, а изменения
   передаются клиенту через Server-Sent Events (SSE)
-- Страница на HTML, CSS и JavaScript
+- React, TypeScript, Vite, Tailwind CSS и shadcn/ui
 - Docker Compose; в проде перед приложением стоит Caddy и Let's Encrypt
 
 ## Интерфейс
 
-- `/` — каталог действий
-- `/action.html?id=…` — хосты и запуск выбранного действия
-- `/check.html` — проверка сайта и журнал
+Frontend находится в `frontend/`. Vite обрабатывает клиентские маршруты и
+проксирует `/api` в FastAPI во время разработки. Production-сборку из
+`frontend/dist` раздаёт FastAPI.
+
+- `/` — основной экран действий
+- `/operations` — история запусков с поиском, фильтрами и пагинацией
+- `/operations/:operationId` — прогресс и результаты отдельного запуска
+- `/checks` — проверка сайта и журнал результатов
 
 ## Запуск для разработки
 
@@ -49,11 +54,28 @@ cp .env.example .env
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Compose запускает `db`, `redis`, `app` и `worker`. Приложение применяет миграции
-Alembic при старте, а `worker` получает фоновые SSH-задачи через Redis.
+Compose запускает `db`, `redis`, `app`, `frontend` и `worker`. Приложение применяет
+миграции Alembic при старте, `worker` получает фоновые SSH-задачи через Redis, а
+Vite автоматически обновляет frontend при изменениях.
 
-Страница: http://localhost:8000. Postgres опубликован на `localhost:5432`, Redis —
-на `localhost:6379`.
+Frontend для разработки: http://localhost:5173. Собранная версия через FastAPI:
+http://localhost:8000. Postgres опубликован на `localhost:5432`, Redis — на
+`localhost:6379`.
+
+Frontend также можно запустить отдельно:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Проверка production-сборки:
+
+```bash
+cd frontend
+npm run build
+```
 
 Для запуска вне Compose укажите `DATABASE_URL`, `CELERY_BROKER_URL` и `REDIS_URL`.
 По умолчанию две последние переменные указывают на `redis://localhost:6379/0`.
@@ -76,9 +98,11 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
   Тело: `{ "url": "https://example.com" }`
 - `GET /api/checks` — последние проверки из журнала
 - `GET /api/hosts` — список зарегистрированных хостов
-- `POST /api/host` — зарегистрировать SSH-хост  
-  Тело: `{ "ip": "1.2.3.4", "username": "root", "password": "..." }`  
-  Ответ: `{ "id", "ip", "username" }`
+- `POST /api/host` — зарегистрировать SSH-хост.
+  Тело: `{ "label": "Production", "ip": "1.2.3.4", "username": "root", "password": "..." }`.
+  Ответ: `{ "id", "label", "ip", "username" }`
+- `PATCH /api/hosts/{host_id}` — изменить `label`, IP и/или пароль активного хоста.
+- `DELETE /api/hosts/{host_id}` — скрыть хост из рабочих списков, сохранив историю Tasks.
 - `POST /api/command` — выполнить действие на хосте  
   Тело: `{ "host_id": 1, "command": "docker_cleanup" }`  
   Команды: `docker_cleanup`, `postgres_backup`, `create_swap`, `logs_cleanup`, `ports`
@@ -103,6 +127,8 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
 
   Ответ: `{ "operation_id": 42, "status": "queued" }`.
 
+- `GET /api/operations` — получить страницу истории операций; поддерживает `page`,
+  `page_size`, `query`, `status_group` и `days`
 - `GET /api/operations/{operation_id}` — актуальный снимок операции: её статус,
   счётчики прогресса, а также статус, результат или ошибку каждой дочерней задачи.
 - `GET /api/operations/{operation_id}/events` — SSE-поток событий

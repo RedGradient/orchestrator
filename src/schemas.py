@@ -69,6 +69,7 @@ class HostItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    label: str | None
     ip: str
     username: str
     created_at: datetime
@@ -116,7 +117,7 @@ class CreateOperationRequest(BaseModel):
     @classmethod
     def host_ids_must_be_unique(cls, host_ids: list[int]) -> list[int]:
         if len(host_ids) != len(set(host_ids)):
-            raise ValueError("host_ids must not contain duplicates")
+            raise ValueError("Список хостов не должен содержать повторяющиеся значения")
         return host_ids
 
 
@@ -161,6 +162,29 @@ class OperationItem(BaseModel):
     tasks: list[OperationTaskItem]
 
 
+class OperationHistoryItem(BaseModel):
+    """Компактное представление Operation для экрана истории."""
+
+    id: int
+    status: OperationStatus
+    progress: OperationProgress
+    hosts: list[HostItem]
+    actions: list[Command]
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class OperationHistoryPage(BaseModel):
+    """Страница истории операций с общим количеством результатов."""
+
+    items: list[OperationHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+
+
 class OperationAccepted(BaseModel):
     """Ответ на создание операции без ожидания выполнения SSH-действий."""
 
@@ -189,17 +213,39 @@ class DockerPruneResult(BaseModel):
 
 
 class RegisterHostRequest(BaseModel):
+    label: str | None = Field(default=None, max_length=255)
     ip: IPv4Address
     username: str = Field(min_length=1)
     password: str = Field(min_length=1)
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def normalize_label(cls, label: object) -> object:
+        if isinstance(label, str):
+            return label.strip() or None
+        return label
 
 
 class RegisterHostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    label: str | None
     ip: str
     username: str
+
+
+class UpdateHostRequest(BaseModel):
+    label: str | None = Field(default=None, max_length=255)
+    ip: IPv4Address | None = None
+    password: str | None = Field(default=None, min_length=1)
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def normalize_label(cls, label: object) -> object:
+        if isinstance(label, str):
+            return label.strip() or None
+        return label
 
 
 class SwapEntry(BaseModel):

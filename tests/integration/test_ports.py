@@ -173,7 +173,15 @@ async def _start_listener(conn: SSHClientConnection, host: str, port: int) -> st
         "sudo systemd-run --quiet --collect --unit "
         f"{shlex.quote(unit)} /usr/bin/python3 -c {shlex.quote(code)}",
     )
-    return unit
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        output = await run_command(conn, "sudo ss -ltnH")
+        if f":{port} " in output or output.rstrip().endswith(f":{port}"):
+            return unit
+        await asyncio.sleep(0.1)
+
+    await _stop_listener(conn, unit)
+    raise TimeoutError(f"тестовый listener не открыл порт {port}")
 
 
 async def _stop_listener(conn: SSHClientConnection, unit: str) -> None:

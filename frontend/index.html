@@ -1,31 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Действия — Orchestrator</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <div class="shell">
-    <nav class="topnav" aria-label="Основная навигация">
-      <a class="brand" href="/">Orchestrator</a>
-      <div class="topnav-links">
-        <a class="active" href="/">Действия</a>
-        <a href="/check.html">Проверка сайта</a>
-      </div>
-    </nav>
-
-    <main class="page">
-      <header class="header">
-        <p class="eyebrow accent">Операции</p>
-        <h1>Действия</h1>
-        <p class="lead">Выберите операцию, затем укажите хосты и запустите выполнение.</p>
-      </header>
-
-      <section id="actions-list" class="action-grid" aria-live="polite"></section>
-    </main>
-  </div>
-  <script type="module" src="/actions.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Управление VPS-хостами и операциями" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Orchestrator</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

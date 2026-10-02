@@ -41,8 +41,11 @@ async def dispatch_action(
     *,
     command: str,
     host: Host,
+    parameters: dict[str, Any] | None = None,
 ) -> BaseModel | dict[str, Any]:
     """Выбирает существующее async-действие без привязки к FastAPI или Celery."""
+
+    del parameters  # Зарезервировано для действий с параметрами в будущих версиях API.
 
     match Command(command):
         case Command.DOCKER_CLEANUP:
