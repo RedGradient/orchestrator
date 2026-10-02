@@ -4,14 +4,31 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV container=docker
 
 RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && printf '%s\n' \
+        'Types: deb' \
+        'URIs: https://download.docker.com/linux/ubuntu' \
+        'Suites: noble' \
+        'Components: stable' \
+        'Architectures: amd64' \
+        'Signed-By: /etc/apt/keyrings/docker.asc' \
+        > /etc/apt/sources.list.d/docker.sources \
+    && apt-get update && apt-get install -y \
     systemd \
     systemd-sysv \
     openssh-server \
     sudo \
-    docker.io \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin \
     logrotate \
     fail2ban \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash testuser \
