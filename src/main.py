@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import asyncssh
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Query, Request, status
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from src.schemas import (
     CreateOperationRequest,
     HostItem,
     OperationAccepted,
+    OperationHistoryPage,
     OperationItem,
     RegisterHostRequest,
     RegisterHostResponse,
@@ -43,6 +44,7 @@ from src.services.operations import (
     create_operation,
     ensure_operation_exists,
     get_operation,
+    list_operations,
     operation_to_item,
     queue_operation_tasks,
 )
@@ -104,6 +106,32 @@ async def create_vps_operation(
             )
 
     return OperationAccepted(operation_id=operation.id, status=OperationStatus.QUEUED)
+
+
+@app.get("/api/operations")
+async def operations(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    query: Annotated[str | None, Query(max_length=255)] = None,
+    status_group: Annotated[
+        str | None,
+        Query(pattern="^(active|succeeded|failed|cancelled)$"),
+    ] = None,
+    days: Annotated[int | None, Query()] = None,
+) -> OperationHistoryPage:
+    """Возвращает историю запусков с фильтрами и пагинацией."""
+
+    if days not in {None, 1, 7, 30}:
+        days = None
+    return await list_operations(
+        session,
+        page=page,
+        page_size=page_size,
+        query=query,
+        status_group=status_group,
+        days=days,
+    )
 
 
 @app.get("/api/operations/{operation_id}")

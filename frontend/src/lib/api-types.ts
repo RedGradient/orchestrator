@@ -102,6 +102,32 @@ export interface Operation {
   tasks: OperationTask[]
 }
 
+export interface OperationHistoryItem {
+  id: number
+  status: OperationStatus
+  progress: OperationProgress
+  hosts: Host[]
+  actions: Command[]
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export interface OperationHistoryPage {
+  items: OperationHistoryItem[]
+  total: number
+  page: number
+  page_size: number
+  has_more: boolean
+}
+
+export interface OperationHistoryFilters {
+  page?: number
+  query?: string
+  statusGroup?: "active" | "succeeded" | "failed" | "cancelled"
+  days?: 1 | 7 | 30
+}
+
 export interface ApiValidationIssue {
   loc?: Array<string | number>
   msg?: string

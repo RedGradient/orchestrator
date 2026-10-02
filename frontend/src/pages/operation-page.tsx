@@ -29,10 +29,10 @@ export function OperationPage() {
           className="mt-7"
           kind="error"
           title="Operation ID должен быть положительным числом"
-          description="Вернитесь на экран действий и запустите новую операцию."
+          description="Вернитесь в историю и выберите существующую операцию."
         >
           <Button asChild variant="outline" size="sm" className="mt-5">
-            <Link to="/">Вернуться к действиям</Link>
+            <Link to="/operations">Вернуться к истории</Link>
           </Button>
         </StatePanel>
       </main>
@@ -86,9 +86,9 @@ export function OperationPage() {
 
   return (
     <main>
-      <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+      <Link to="/operations" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft aria-hidden="true" className="size-4" />
-        К действиям
+        К истории
       </Link>
       <PageHeader
         eyebrow="Операция"
@@ -96,6 +96,9 @@ export function OperationPage() {
         description="REST snapshot — актуальное состояние операции. Изменения поступают через один realtime-канал."
         actions={
           <>
+            <Button asChild variant="outline">
+              <Link to="/">Новое действие</Link>
+            </Button>
             <RealtimeIndicator state={realtimeState} terminal={terminal} />
             {!terminal ? (
               <Button type="button" variant="outline" onClick={() => setIsCancelDialogOpen(true)}>

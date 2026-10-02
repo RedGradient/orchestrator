@@ -6,6 +6,8 @@ import type {
   Host,
   Operation,
   OperationAccepted,
+  OperationHistoryFilters,
+  OperationHistoryPage,
   RegisterHostInput,
   RegisterHostResponse,
   UpdateHostInput,
@@ -84,6 +86,13 @@ export const api = {
     request<void>(`/api/hosts/${hostId}`, { method: "DELETE" }),
   createOperation: (input: CreateOperationInput) =>
     request<OperationAccepted>("/api/operations", jsonRequest("POST", input)),
+  listOperations: (filters: OperationHistoryFilters, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ page: String(filters.page ?? 1) })
+    if (filters.query) params.set("query", filters.query)
+    if (filters.statusGroup) params.set("status_group", filters.statusGroup)
+    if (filters.days) params.set("days", String(filters.days))
+    return request<OperationHistoryPage>(`/api/operations?${params}`, { signal })
+  },
   getOperation: (operationId: number) =>
     request<Operation>(`/api/operations/${operationId}`),
   cancelOperation: (operationId: number) =>

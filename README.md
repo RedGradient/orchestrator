@@ -43,8 +43,9 @@ Frontend находится в `frontend/`. Vite обрабатывает кли
 `frontend/dist` раздаёт FastAPI.
 
 - `/` — основной экран действий
+- `/operations` — история запусков с поиском, фильтрами и пагинацией
+- `/operations/:operationId` — прогресс и результаты отдельного запуска
 - `/checks` — проверка сайта и журнал результатов
-- `/operations/{operation_id}` — экран операции
 
 ## Запуск для разработки
 
@@ -126,6 +127,8 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
 
   Ответ: `{ "operation_id": 42, "status": "queued" }`.
 
+- `GET /api/operations` — получить страницу истории операций; поддерживает `page`,
+  `page_size`, `query`, `status_group` и `days`
 - `GET /api/operations/{operation_id}` — актуальный снимок операции: её статус,
   счётчики прогресса, а также статус, результат или ошибку каждой дочерней задачи.
 - `GET /api/operations/{operation_id}/events` — SSE-поток событий

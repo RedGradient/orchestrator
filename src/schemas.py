@@ -162,6 +162,29 @@ class OperationItem(BaseModel):
     tasks: list[OperationTaskItem]
 
 
+class OperationHistoryItem(BaseModel):
+    """Компактное представление Operation для экрана истории."""
+
+    id: int
+    status: OperationStatus
+    progress: OperationProgress
+    hosts: list[HostItem]
+    actions: list[Command]
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class OperationHistoryPage(BaseModel):
+    """Страница истории операций с общим количеством результатов."""
+
+    items: list[OperationHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+
+
 class OperationAccepted(BaseModel):
     """Ответ на создание операции без ожидания выполнения SSH-действий."""
 

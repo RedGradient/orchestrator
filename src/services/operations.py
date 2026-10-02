@@ -1,7 +1,7 @@
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import Select, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,10 +16,19 @@ from src.schemas import (
     CreateOperationRequest,
     HostItem,
     OperationActionRequest,
+    OperationHistoryItem,
+    OperationHistoryPage,
     OperationItem,
     OperationProgress,
     OperationTaskItem,
 )
+
+HISTORY_STATUS_GROUPS: dict[str, set[OperationStatus]] = {
+    "active": {OperationStatus.PENDING, OperationStatus.QUEUED, OperationStatus.RUNNING},
+    "succeeded": {OperationStatus.SUCCEEDED},
+    "failed": {OperationStatus.FAILED, OperationStatus.PARTIAL_FAILURE},
+    "cancelled": {OperationStatus.CANCELLED},
+}
 
 
 async def create_operation(
@@ -95,6 +104,55 @@ async def get_operation(session: AsyncSession, operation_id: int) -> Operation:
     if operation is None:
         raise OperationNotFoundError(operation_id)
     return operation
+
+
+async def list_operations(
+    session: AsyncSession,
+    *,
+    page: int,
+    page_size: int,
+    query: str | None = None,
+    status_group: str | None = None,
+    days: int | None = None,
+) -> OperationHistoryPage:
+    """Возвращает отфильтрованную страницу операций, от новых к старым."""
+
+    filters = []
+    if status_group:
+        filters.append(Operation.status.in_(HISTORY_STATUS_GROUPS[status_group]))
+    if days:
+        filters.append(Operation.created_at >= datetime.now(UTC) - timedelta(days=days))
+    if query:
+        normalized_query = query.strip()
+        host_matches = exists().where(
+            OperationTask.operation_id == Operation.id,
+            OperationTask.host_id == Host.id,
+            or_(
+                Host.ip.ilike(f"%{normalized_query}%"),
+                Host.label.ilike(f"%{normalized_query}%"),
+            ),
+        )
+        query_filters = [host_matches]
+        if normalized_query.removeprefix("#").isdigit():
+            query_filters.append(Operation.id == int(normalized_query.removeprefix("#")))
+        filters.append(or_(*query_filters))
+
+    filtered: Select[tuple[Operation]] = select(Operation).where(*filters)
+    total = await session.scalar(select(func.count()).select_from(filtered.subquery())) or 0
+    statement = (
+        filtered.order_by(Operation.created_at.desc(), Operation.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .options(selectinload(Operation.tasks).selectinload(OperationTask.host))
+    )
+    operations = list((await session.scalars(statement)).all())
+    return OperationHistoryPage(
+        items=[operation_to_history_item(operation) for operation in operations],
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=page * page_size < total,
+    )
 
 
 async def ensure_operation_exists(session: AsyncSession, operation_id: int) -> None:
@@ -231,6 +289,23 @@ def operation_to_item(operation: Operation) -> OperationItem:
         started_at=operation.started_at,
         finished_at=operation.finished_at,
         tasks=tasks,
+    )
+
+
+def operation_to_history_item(operation: Operation) -> OperationHistoryItem:
+    """Собирает компактную сводку без результатов отдельных задач."""
+
+    hosts_by_id = {task.host.id: task.host for task in operation.tasks}
+    commands = {task.command for task in operation.tasks}
+    return OperationHistoryItem(
+        id=operation.id,
+        status=operation.status,
+        progress=operation_progress(operation.tasks),
+        hosts=[HostItem.model_validate(host) for host in hosts_by_id.values()],
+        actions=[Command(command) for command in sorted(commands)],
+        created_at=operation.created_at,
+        started_at=operation.started_at,
+        finished_at=operation.finished_at,
     )
 
 
