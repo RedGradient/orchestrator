@@ -58,8 +58,6 @@ export function OperationSummary({ operation }: OperationSummaryProps) {
           <ProgressCount label="Succeeded" value={progress.succeeded} />
           <ProgressCount label="Failed" value={progress.failed} />
           <ProgressCount label="Timeout" value={progress.timeout} />
-          <ProgressCount label="Cancellation requested" value={progress.cancellation_requested} />
-          <ProgressCount label="Cancelled" value={progress.cancelled} />
         </dl>
       </Card>
 

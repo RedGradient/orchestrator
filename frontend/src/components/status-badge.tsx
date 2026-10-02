@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 type Status = OperationStatus | TaskStatus
 
-const statusPresentation: Record<Status, { label: string; className: string }> = {
+const statusPresentation: Partial<Record<Status, { label: string; className: string }>> = {
   pending: { label: "Ожидает", className: "bg-muted text-muted-foreground" },
   queued: { label: "В очереди", className: "bg-muted text-muted-foreground" },
   running: { label: "Выполняется", className: "bg-info/10 text-info" },
@@ -14,11 +14,6 @@ const statusPresentation: Record<Status, { label: string; className: string }> =
     className: "bg-warning/10 text-warning-foreground",
   },
   timeout: { label: "Тайм-аут", className: "bg-warning/10 text-warning-foreground" },
-  cancellation_requested: {
-    label: "Отмена запрошена",
-    className: "bg-warning/10 text-warning-foreground",
-  },
-  cancelled: { label: "Отменено", className: "bg-muted text-muted-foreground" },
 }
 
 export interface StatusBadgeProps {
@@ -28,6 +23,7 @@ export interface StatusBadgeProps {
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const presentation = statusPresentation[status]
+  if (!presentation) return null
 
   return (
     <span

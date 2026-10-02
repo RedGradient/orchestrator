@@ -161,6 +161,4 @@ export const api = {
   },
   getOperation: (operationId: number) =>
     request<Operation>(`/api/operations/${operationId}`),
-  cancelOperation: (operationId: number) =>
-    request<Operation>(`/api/operations/${operationId}/cancel`, jsonRequest("POST")),
 }

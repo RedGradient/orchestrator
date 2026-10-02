@@ -102,7 +102,6 @@ export function OperationsHistoryPage() {
                 ["active", "Выполняются"],
                 ["succeeded", "Успешно"],
                 ["failed", "С ошибками"],
-                ["cancelled", "Отменены"],
               ]}
             />
             <FilterSelect
@@ -209,7 +208,7 @@ function parseFilters(params: URLSearchParams): OperationHistoryFilters {
   return {
     page: Number.isSafeInteger(page) && page > 0 ? page : 1,
     query: params.get("query")?.trim() || undefined,
-    statusGroup: ["active", "succeeded", "failed", "cancelled"].includes(status ?? "") ? status as OperationHistoryFilters["statusGroup"] : undefined,
+    statusGroup: ["active", "succeeded", "failed"].includes(status ?? "") ? status as OperationHistoryFilters["statusGroup"] : undefined,
     days: [1, 7, 30].includes(days) ? days as 1 | 7 | 30 : undefined,
   }
 }

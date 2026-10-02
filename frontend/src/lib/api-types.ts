@@ -124,7 +124,7 @@ export interface OperationHistoryPage {
 export interface OperationHistoryFilters {
   page?: number
   query?: string
-  statusGroup?: "active" | "succeeded" | "failed" | "cancelled"
+  statusGroup?: "active" | "succeeded" | "failed"
   days?: 1 | 7 | 30
 }
 

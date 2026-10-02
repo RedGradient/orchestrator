@@ -106,15 +106,7 @@ export function useOperation(operationId: number | null) {
     return () => events.close()
   }, [hasOperation, isTerminal, operationId, refresh])
 
-  const cancel = useCallback(async () => {
-    if (operationId === null) {
-      return
-    }
-    const snapshot = await api.cancelOperation(operationId)
-    setOperation(snapshot)
-  }, [operationId])
-
   const effectiveRealtimeState = isTerminal ? "closed" : hasOperation ? realtimeState : "idle"
 
-  return { operation, isLoading, error, realtimeState: effectiveRealtimeState, refresh, cancel }
+  return { operation, isLoading, error, realtimeState: effectiveRealtimeState, refresh }
 }

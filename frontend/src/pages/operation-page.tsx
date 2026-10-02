@@ -1,25 +1,18 @@
-import { ArrowLeft, Ban, Radio, RefreshCw, WifiOff } from "lucide-react"
-import { useState } from "react"
+import { ArrowLeft, Radio, RefreshCw, WifiOff } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
 
-import { CancelOperationDialog } from "@/components/cancel-operation-dialog"
 import { OperationSummary } from "@/components/operation-summary"
 import { PageHeader } from "@/components/page-header"
 import { StatePanel } from "@/components/state-panel"
 import { TaskList } from "@/components/task-list"
 import { Button } from "@/components/ui/button"
-import { ApiError } from "@/lib/api-client"
 import { isTerminalOperation, useOperation } from "@/hooks/use-operation"
 
 export function OperationPage() {
   const params = useParams()
   const parsedId = Number(params.operationId)
   const operationId = Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : null
-  const { operation, isLoading, error, realtimeState, refresh, cancel } =
-    useOperation(operationId)
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const [cancelError, setCancelError] = useState<string | null>(null)
+  const { operation, isLoading, error, realtimeState, refresh } = useOperation(operationId)
 
   if (operationId === null) {
     return (
@@ -71,19 +64,6 @@ export function OperationPage() {
 
   const terminal = isTerminalOperation(operation.status)
 
-  async function handleCancel() {
-    setIsCancelling(true)
-    setCancelError(null)
-    try {
-      await cancel()
-      setIsCancelDialogOpen(false)
-    } catch (caught) {
-      setCancelError(caught instanceof ApiError ? caught.message : "Не удалось отменить операцию.")
-    } finally {
-      setIsCancelling(false)
-    }
-  }
-
   return (
     <main>
       <Link to="/operations" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -100,12 +80,6 @@ export function OperationPage() {
               <Link to="/">Новое действие</Link>
             </Button>
             <RealtimeIndicator state={realtimeState} terminal={terminal} />
-            {!terminal ? (
-              <Button type="button" variant="outline" onClick={() => setIsCancelDialogOpen(true)}>
-                <Ban aria-hidden="true" className="size-4" />
-                Отменить
-              </Button>
-            ) : null}
           </>
         }
       />
@@ -120,24 +94,8 @@ export function OperationPage() {
         </div>
       ) : null}
 
-      {cancelError ? (
-        <div className="mt-5 rounded-md border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">
-          {cancelError}
-        </div>
-      ) : null}
-
       <OperationSummary operation={operation} />
       <TaskList tasks={operation.tasks} />
-
-      <CancelOperationDialog
-        open={isCancelDialogOpen}
-        running={operation.progress.running}
-        queued={operation.progress.queued}
-        pending={operation.progress.pending}
-        isCancelling={isCancelling}
-        onConfirm={() => void handleCancel()}
-        onClose={() => setIsCancelDialogOpen(false)}
-      />
     </main>
   )
 }
