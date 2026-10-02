@@ -1,5 +1,6 @@
 import shlex
 import uuid
+from re import fullmatch
 
 import pytest
 from asyncssh import SSHClientConnection
@@ -8,6 +9,7 @@ from src.services.docker import docker_cleanup
 from src.services.helpers.ssh import run_command
 
 ALPINE_IMAGE = "alpine:3.21"
+RECLAIMED_SPACE_PATTERN = r"\d+\.\d{2}(B|KB|MB|GB|TB|PB)"
 
 
 @pytest.mark.asyncio
@@ -199,5 +201,103 @@ RUN echo cached > /build-marker
         assert any(cache_id in result.deleted_build_cache_objects for cache_id in cache_ids)
         assert await run_command(ssh_conn, "docker builder du --format '{{.ID}}'") == ""
     finally:
+        await run_command(ssh_conn, f"docker image rm -f {shlex.quote(image_tag)} || true")
+        await run_command(ssh_conn, f"rm -rf {shlex.quote(build_dir)}")
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_docker_cleanup_succeeds_when_docker_host_is_empty(
+    ssh_conn: SSHClientConnection,
+) -> None:
+    """Возвращает пустой результат и не падает, если очищать нечего."""
+
+    await run_command(ssh_conn, "sudo systemctl start docker")
+
+    result = await docker_cleanup(ssh_conn)
+
+    assert result.deleted_containers == []
+    assert result.deleted_volumes == []
+    assert result.deleted_networks == []
+    assert result.untagged_images == []
+    assert result.deleted_images == []
+    assert result.deleted_build_cache_objects == []
+    assert fullmatch(RECLAIMED_SPACE_PATTERN, result.disk_space_reclaimed)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_docker_cleanup_returns_result_matching_removed_resources(
+    ssh_conn: SSHClientConnection,
+) -> None:
+    """Сопоставляет поля DockerPruneResult с реально удалёнными ресурсами Docker."""
+
+    suffix = uuid.uuid4().hex[:8]
+    container_name = f"docker-cleanup-result-container-it-{suffix}"
+    volume_name = f"docker-cleanup-result-volume-it-{suffix}"
+    network_name = f"docker-cleanup-result-network-it-{suffix}"
+    build_dir = f"/tmp/docker-cleanup-result-build-{uuid.uuid4().hex}"
+    image_tag = f"docker-cleanup-result-image-it-{suffix}"
+    dockerfile_path = f"{build_dir}/Dockerfile"
+    dockerfile = """\
+FROM alpine:3.21
+RUN echo cached > /build-marker
+"""
+
+    await run_command(ssh_conn, "sudo systemctl start docker")
+    await run_command(ssh_conn, f"docker pull {shlex.quote(ALPINE_IMAGE)}")
+    await run_command(ssh_conn, f"docker volume create {shlex.quote(volume_name)}")
+    await run_command(ssh_conn, f"docker network create {shlex.quote(network_name)}")
+    await run_command(ssh_conn, f"mkdir -p {shlex.quote(build_dir)}")
+    await run_command(
+        ssh_conn,
+        f"printf %s {shlex.quote(dockerfile)} > {shlex.quote(dockerfile_path)}",
+    )
+    await run_command(
+        ssh_conn,
+        f"docker build -t {shlex.quote(image_tag)} {shlex.quote(build_dir)}",
+    )
+    await run_command(
+        ssh_conn,
+        "docker run -d --name "
+        f"{shlex.quote(container_name)} "
+        f"--network {shlex.quote(network_name)} "
+        f"-v {shlex.quote(volume_name)}:/data "
+        f"{shlex.quote(ALPINE_IMAGE)} sleep infinity",
+    )
+    container_id = await run_command(
+        ssh_conn,
+        f"docker inspect --format '{{{{.Id}}}}' {shlex.quote(container_name)}",
+    )
+    alpine_image_id = await run_command(
+        ssh_conn,
+        f"docker image inspect --format '{{{{.Id}}}}' {shlex.quote(ALPINE_IMAGE)}",
+    )
+    cache_ids = (await run_command(ssh_conn, "docker builder du --format '{{.ID}}'")).splitlines()
+
+    try:
+        result = await docker_cleanup(ssh_conn)
+
+        assert any(container_id.startswith(item) for item in result.deleted_containers)
+        assert volume_name in result.deleted_volumes
+        assert network_name in result.deleted_networks
+        assert ALPINE_IMAGE in result.untagged_images
+        assert alpine_image_id in result.deleted_images
+        assert any(cache_id in result.deleted_build_cache_objects for cache_id in cache_ids)
+        assert fullmatch(RECLAIMED_SPACE_PATTERN, result.disk_space_reclaimed)
+
+        for command in (
+            f"docker inspect {shlex.quote(container_name)}",
+            f"docker volume inspect {shlex.quote(volume_name)}",
+            f"docker network inspect {shlex.quote(network_name)}",
+            f"docker image inspect {shlex.quote(ALPINE_IMAGE)}",
+        ):
+            inspect_result = await ssh_conn.run(command, check=False)
+            assert inspect_result.exit_status != 0
+        assert await run_command(ssh_conn, "docker builder du --format '{{.ID}}'") == ""
+    finally:
+        await run_command(ssh_conn, f"docker rm -f {shlex.quote(container_name)} || true")
+        await run_command(ssh_conn, f"docker volume rm -f {shlex.quote(volume_name)} || true")
+        await run_command(ssh_conn, f"docker network rm {shlex.quote(network_name)} || true")
         await run_command(ssh_conn, f"docker image rm -f {shlex.quote(image_tag)} || true")
         await run_command(ssh_conn, f"rm -rf {shlex.quote(build_dir)}")
