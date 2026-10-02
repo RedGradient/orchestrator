@@ -18,6 +18,7 @@ RUN useradd -m -s /bin/bash testuser \
     && echo 'testuser:test' | chpasswd \
     && echo 'testuser ALL=(ALL) NOPASSWD:ALL' \
        > /etc/sudoers.d/testuser \
+    && usermod -aG docker testuser \
     && chmod 0440 /etc/sudoers.d/testuser
 
 RUN mkdir -p /run/sshd /etc/docker /etc/systemd/system/docker.service.d \
