@@ -11,8 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
 from src.exc_handlers import register_exception_handlers
-from src.exceptions import HostNotFoundError
-from src.models import Host, OperationStatus
+from src.models import OperationStatus
 from src.schemas import (
     CheckHistoryItem,
     CheckRequest,
@@ -27,11 +26,12 @@ from src.schemas import (
     OperationItem,
     RegisterHostRequest,
     RegisterHostResponse,
+    UpdateHostRequest,
 )
 from src.services.backup import postgres_dump
 from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
-from src.services.host import create_host, list_hosts
+from src.services.host import create_host, delete_host, get_active_host, list_hosts, update_host
 from src.services.logs import logs_cleanup
 from src.services.operation_events import (
     publish_operation_updated,
@@ -155,8 +155,7 @@ async def run_command(
     request: CommandRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Any:
-    if (host := await session.get(Host, request.host_id)) is None:
-        raise HostNotFoundError(host_id=request.host_id)
+    host = await get_active_host(session, request.host_id)
 
     async with asyncssh.connect(
         str(host.ip),
@@ -199,6 +198,24 @@ async def register_host(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> RegisterHostResponse:
     return await create_host(session, request)
+
+
+@app.patch("/api/hosts/{host_id}")
+async def edit_host(
+    host_id: int,
+    request: UpdateHostRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> HostItem:
+    return await update_host(session, host_id, request)
+
+
+@app.delete("/api/hosts/{host_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_host(
+    host_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    await delete_host(session, host_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.get("/check.html", include_in_schema=False)

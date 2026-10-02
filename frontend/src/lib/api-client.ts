@@ -8,6 +8,7 @@ import type {
   OperationAccepted,
   RegisterHostInput,
   RegisterHostResponse,
+  UpdateHostInput,
 } from "@/lib/api-types"
 
 export class ApiError extends Error {
@@ -74,6 +75,13 @@ export const api = {
   listHosts: (signal?: AbortSignal) => request<Host[]>("/api/hosts", { signal }),
   registerHost: (input: RegisterHostInput) =>
     request<RegisterHostResponse>("/api/host", jsonRequest("POST", input)),
+  updateHost: (hostId: number, input: UpdateHostInput) =>
+    request<Host>(`/api/hosts/${hostId}`, {
+      ...jsonRequest("POST", input),
+      method: "PATCH",
+    }),
+  deleteHost: (hostId: number) =>
+    request<void>(`/api/hosts/${hostId}`, { method: "DELETE" }),
   createOperation: (input: CreateOperationInput) =>
     request<OperationAccepted>("/api/operations", jsonRequest("POST", input)),
   getOperation: (operationId: number) =>

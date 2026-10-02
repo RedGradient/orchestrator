@@ -100,6 +100,8 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
 - `POST /api/host` — зарегистрировать SSH-хост.
   Тело: `{ "label": "Production", "ip": "1.2.3.4", "username": "root", "password": "..." }`.
   Ответ: `{ "id", "label", "ip", "username" }`
+- `PATCH /api/hosts/{host_id}` — изменить `label`, IP и/или пароль активного хоста.
+- `DELETE /api/hosts/{host_id}` — скрыть хост из рабочих списков, сохранив историю Tasks.
 - `POST /api/command` — выполнить действие на хосте  
   Тело: `{ "host_id": 1, "command": "docker_cleanup" }`  
   Команды: `docker_cleanup`, `postgres_backup`, `create_swap`, `logs_cleanup`, `ports`

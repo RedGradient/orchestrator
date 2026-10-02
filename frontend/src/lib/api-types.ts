@@ -46,6 +46,12 @@ export interface RegisterHostResponse {
   username: string
 }
 
+export interface UpdateHostInput {
+  label: string | null
+  ip: string
+  password?: string
+}
+
 export interface OperationActionInput {
   command: Command
   parameters: Record<string, unknown>

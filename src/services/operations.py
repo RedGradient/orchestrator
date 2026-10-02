@@ -29,7 +29,11 @@ async def create_operation(
     """Создаёт Operation и её pending-задачи в одной БД-транзакции."""
 
     validate_action_parameters(request.actions)
-    hosts = (await session.scalars(select(Host).where(Host.id.in_(request.host_ids)))).all()
+    hosts = (
+        await session.scalars(
+            select(Host).where(Host.id.in_(request.host_ids), Host.deleted_at.is_(None))
+        )
+    ).all()
     hosts_by_id = {host.id: host for host in hosts}
     missing_host_ids = [host_id for host_id in request.host_ids if host_id not in hosts_by_id]
     if missing_host_ids:

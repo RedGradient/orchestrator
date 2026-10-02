@@ -22,6 +22,14 @@ class HostNotFoundError(Exception):
         super().__init__(f"Host with id {host_id} not found")
 
 
+class HostIpAlreadyExistsError(Exception):
+    """Активный хост с таким IP уже зарегистрирован."""
+
+    def __init__(self, ip: str):
+        self.ip = ip
+        super().__init__(f"Host with IP {ip} already exists")
+
+
 class HostsNotFoundError(Exception):
     """Часть хостов, переданных для запуска операции, не существует."""
 

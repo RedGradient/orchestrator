@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -94,12 +94,21 @@ class Host(Base):
     """Удалённый хост для SSH-подключения."""
 
     __tablename__ = "hosts"
+    __table_args__ = (
+        Index(
+            "ix_hosts_ip",
+            "ip",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     label: Mapped[str | None] = mapped_column(String(255))
-    ip: Mapped[str] = mapped_column(String(45), unique=True, nullable=False, index=True)
+    ip: Mapped[str] = mapped_column(String(45), nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

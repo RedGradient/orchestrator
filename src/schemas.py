@@ -212,6 +212,19 @@ class RegisterHostResponse(BaseModel):
     username: str
 
 
+class UpdateHostRequest(BaseModel):
+    label: str | None = Field(default=None, max_length=255)
+    ip: IPv4Address | None = None
+    password: str | None = Field(default=None, min_length=1)
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def normalize_label(cls, label: object) -> object:
+        if isinstance(label, str):
+            return label.strip() or None
+        return label
+
+
 class SwapEntry(BaseModel):
     path: str
     size_bytes: int
