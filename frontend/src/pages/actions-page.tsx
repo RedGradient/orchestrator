@@ -6,14 +6,16 @@ import { HostsSelector } from "@/components/hosts-selector"
 import { OperationPreview } from "@/components/operation-preview"
 import { PageHeader } from "@/components/page-header"
 import { actions } from "@/lib/actions"
+import { loadActionSelection, saveActionSelection } from "@/lib/action-selection-storage"
 import { ApiError, api } from "@/lib/api-client"
 import type { Command, Host } from "@/lib/api-types"
 
 export function ActionsPage() {
   const navigate = useNavigate()
+  const [initialSelection] = useState(loadActionSelection)
   const [hosts, setHosts] = useState<Host[]>([])
-  const [selectedHostIds, setSelectedHostIds] = useState<Set<number>>(new Set())
-  const [selectedActions, setSelectedActions] = useState<Set<Command>>(new Set())
+  const [selectedHostIds, setSelectedHostIds] = useState<Set<number>>(initialSelection.hostIds)
+  const [selectedActions, setSelectedActions] = useState<Set<Command>>(initialSelection.commands)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadVersion, setReloadVersion] = useState(0)
@@ -61,6 +63,10 @@ export function ActionsPage() {
 
     return () => controller.abort()
   }, [reloadVersion])
+
+  useEffect(() => {
+    saveActionSelection(selectedHostIds, selectedActions)
+  }, [selectedActions, selectedHostIds])
 
   async function createOperation() {
     if (selectedHosts.length === 0 || selectedActionDefinitions.length === 0 || isCreating) {
