@@ -19,7 +19,7 @@ class HostNotFoundError(Exception):
 
     def __init__(self, host_id: int):
         self.host_id = host_id
-        super().__init__(f"Host with id {host_id} not found")
+        super().__init__(f"Хост с идентификатором {host_id} не найден")
 
 
 class HostIpAlreadyExistsError(Exception):
@@ -27,7 +27,7 @@ class HostIpAlreadyExistsError(Exception):
 
     def __init__(self, ip: str):
         self.ip = ip
-        super().__init__(f"Host with IP {ip} already exists")
+        super().__init__(f"Хост с IP-адресом {ip} уже существует")
 
 
 class HostsNotFoundError(Exception):
@@ -35,7 +35,8 @@ class HostsNotFoundError(Exception):
 
     def __init__(self, host_ids: list[int]):
         self.host_ids = host_ids
-        super().__init__(f"Hosts with ids {host_ids} not found")
+        identifiers = ", ".join(map(str, host_ids))
+        super().__init__(f"Не найдены хосты с идентификаторами: {identifiers}")
 
 
 class OperationNotFoundError(Exception):
@@ -43,7 +44,7 @@ class OperationNotFoundError(Exception):
 
     def __init__(self, operation_id: int):
         self.operation_id = operation_id
-        super().__init__(f"Operation with id {operation_id} not found")
+        super().__init__(f"Операция с идентификатором {operation_id} не найдена")
 
 
 class UnsupportedOperationParametersError(Exception):
@@ -51,4 +52,4 @@ class UnsupportedOperationParametersError(Exception):
 
     def __init__(self, command: str):
         self.command = command
-        super().__init__(f"Command {command!r} does not support parameters")
+        super().__init__(f"Действие «{command}» не поддерживает параметры")

@@ -28,7 +28,7 @@ export function OperationPage() {
         <StatePanel
           className="mt-7"
           kind="error"
-          title="Operation ID должен быть положительным числом"
+          title="Идентификатор операции должен быть положительным числом"
           description="Вернитесь в историю и выберите существующую операцию."
         >
           <Button asChild variant="outline" size="sm" className="mt-5">

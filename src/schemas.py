@@ -117,7 +117,7 @@ class CreateOperationRequest(BaseModel):
     @classmethod
     def host_ids_must_be_unique(cls, host_ids: list[int]) -> list[int]:
         if len(host_ids) != len(set(host_ids)):
-            raise ValueError("host_ids must not contain duplicates")
+            raise ValueError("Список хостов не должен содержать повторяющиеся значения")
         return host_ids
 
 

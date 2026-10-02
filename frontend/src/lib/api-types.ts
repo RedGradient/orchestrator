@@ -131,6 +131,7 @@ export interface OperationHistoryFilters {
 export interface ApiValidationIssue {
   loc?: Array<string | number>
   msg?: string
+  type?: string
 }
 
 export interface ApiErrorPayload {
