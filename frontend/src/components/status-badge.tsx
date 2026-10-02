@@ -10,7 +10,7 @@ const statusPresentation: Record<Status, { label: string; className: string }> =
   succeeded: { label: "Успешно", className: "bg-success/10 text-success" },
   failed: { label: "Ошибка", className: "bg-destructive/10 text-destructive" },
   partial_failure: {
-    label: "Частичная ошибка",
+    label: "Выполнено частично",
     className: "bg-warning/10 text-warning-foreground",
   },
   timeout: { label: "Тайм-аут", className: "bg-warning/10 text-warning-foreground" },

@@ -327,6 +327,9 @@ def operation_progress(tasks: list[OperationTask]) -> OperationProgress:
 
 
 async def _refresh_operation_status(session: AsyncSession, operation_id: int) -> None:
+    # В SessionLocal отключён autoflush, поэтому сначала сохраняем статусы задач,
+    # а затем перечитываем их для расчёта общего статуса операции.
+    await session.flush()
     operation = await session.scalar(
         select(Operation).where(Operation.id == operation_id).options(selectinload(Operation.tasks))
     )
