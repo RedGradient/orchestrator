@@ -67,13 +67,12 @@ export function OperationPreview({ hosts, actions, isCreating, error, onCreate }
         </div>
       ) : (
         <div className="max-h-[420px] overflow-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[520px] border-collapse text-left text-sm">
             <thead className="sticky top-0 z-10 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
               <tr>
                 <th className="w-16 px-4 py-2.5 font-medium sm:px-5">№</th>
                 <th className="px-4 py-2.5 font-medium sm:px-5">Хост</th>
                 <th className="px-4 py-2.5 font-medium sm:px-5">Действие</th>
-                <th className="px-4 py-2.5 font-medium sm:px-5">Параметры</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -96,9 +95,6 @@ export function OperationPreview({ hosts, actions, isCreating, error, onCreate }
                       <code className="mt-0.5 block text-xs text-muted-foreground">
                         {action.command}
                       </code>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground sm:px-5">
-                      {"{}"}
                     </td>
                   </tr>
                 )),

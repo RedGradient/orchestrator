@@ -79,14 +79,16 @@ export function TaskList({ tasks }: TaskListProps) {
                 )}
               </div>
 
-              <details className="mt-5 text-sm">
-                <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
-                  Входные параметры
-                </summary>
-                <pre className="mt-2 max-h-52 overflow-auto rounded-md border bg-background p-3 text-xs">
-                  {JSON.stringify(task.parameters, null, 2)}
-                </pre>
-              </details>
+              {Object.keys(task.parameters).length > 0 ? (
+                <details className="mt-5 text-sm">
+                  <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    Входные параметры
+                  </summary>
+                  <pre className="mt-2 max-h-52 overflow-auto rounded-md border bg-background p-3 text-xs">
+                    {JSON.stringify(task.parameters, null, 2)}
+                  </pre>
+                </details>
+              ) : null}
             </div>
           </details>
         ))}
