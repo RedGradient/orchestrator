@@ -104,3 +104,52 @@ export interface ApiValidationIssue {
 export interface ApiErrorPayload {
   detail?: string | ApiValidationIssue[]
 }
+
+export interface HttpCheckResult {
+  ok: boolean
+  status_code: number | null
+  response_time_ms: number | null
+  error: string | null
+}
+
+export interface SslCheckResult {
+  ok: boolean
+  version: string | null
+  issuer: string | null
+  expires_at: string | null
+  days_remaining: number | null
+  error: string | null
+}
+
+export interface FileCheckResult {
+  available: boolean
+  status_code: number | null
+  valid: boolean | null
+  errors: string[]
+  warnings: string[]
+  error: string | null
+}
+
+export interface RobotsCheckResult extends FileCheckResult {
+  sitemaps: string[]
+}
+
+export interface SitemapCheckResult extends FileCheckResult {
+  url_count: number | null
+}
+
+export interface CheckResult {
+  url: string
+  domain: string | null
+  http: HttpCheckResult | null
+  ssl: SslCheckResult | null
+  robots: RobotsCheckResult | null
+  sitemap: SitemapCheckResult | null
+}
+
+export interface CheckHistoryItem {
+  id: number
+  created_at: string
+  trigger: string
+  result: CheckResult
+}

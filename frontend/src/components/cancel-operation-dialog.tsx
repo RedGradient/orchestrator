@@ -1,4 +1,5 @@
 import { LoaderCircle, TriangleAlert } from "lucide-react"
+import { useEffect, useRef } from "react"
 
 import { Button } from "@/components/ui/button"
 
@@ -21,10 +22,16 @@ export function CancelOperationDialog({
   onConfirm,
   onClose,
 }: CancelOperationDialogProps) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (open) cancelButtonRef.current?.focus()
+  }, [open])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-4 backdrop-blur-[2px]" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !isCancelling && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-4 backdrop-blur-[2px]" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !isCancelling && onClose()} onKeyDown={(event) => event.key === "Escape" && !isCancelling && onClose()}>
       <section className="w-full max-w-md rounded-lg border bg-card p-5 shadow-xl" role="alertdialog" aria-modal="true" aria-labelledby="cancel-title" aria-describedby="cancel-description">
         <span className="flex size-10 items-center justify-center rounded-full bg-warning/25 text-warning-foreground">
           <TriangleAlert aria-hidden="true" className="size-5" />
@@ -39,7 +46,7 @@ export function CancelOperationDialog({
           <DialogMetric label="Ожидают" value={pending} />
         </dl>
         <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isCancelling}>Не отменять</Button>
+          <Button ref={cancelButtonRef} type="button" variant="outline" onClick={onClose} disabled={isCancelling}>Не отменять</Button>
           <Button type="button" variant="destructive" onClick={onConfirm} disabled={isCancelling}>
             {isCancelling ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
             {isCancelling ? "Отменяем…" : "Отменить операцию"}

@@ -5,7 +5,7 @@ from typing import Annotated, Any
 
 import asyncssh
 from fastapi import Depends, FastAPI, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
@@ -199,6 +199,16 @@ async def register_host(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> RegisterHostResponse:
     return await create_host(session, request)
+
+
+@app.get("/check.html", include_in_schema=False)
+async def legacy_check_page() -> RedirectResponse:
+    return RedirectResponse(url="/checks", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+
+
+@app.get("/action.html", include_in_schema=False)
+async def legacy_action_page() -> RedirectResponse:
+    return RedirectResponse(url="/", status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
 app.mount(

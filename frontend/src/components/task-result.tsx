@@ -156,14 +156,18 @@ function Metric({ label, value }: { label: string; value: ReactNode }) {
 }
 
 export function TaskResult({ command, result }: TaskResultProps) {
-  if (command === "ports") return <PortsResult result={result} />
-  if (command === "docker_cleanup") return <DockerResult result={result} />
-  if (command === "postgres_backup") return <BackupResult result={result} />
-  if (command === "create_swap") return <SwapResult result={result} />
-  if (command === "logs_cleanup") return <LogsResult result={result} />
+  if (command === "ports" && Array.isArray(result.ports)) return <PortsResult result={result} />
+  if (command === "docker_cleanup" && "disk_space_reclaimed" in result) {
+    return <DockerResult result={result} />
+  }
+  if (command === "postgres_backup" && Array.isArray(result.containers)) {
+    return <BackupResult result={result} />
+  }
+  if (command === "create_swap" && "created" in result) return <SwapResult result={result} />
+  if (command === "logs_cleanup" && "freed_bytes" in result) return <LogsResult result={result} />
 
   return (
-    <pre className="max-h-80 overflow-auto rounded-md border bg-muted/40 p-3 text-xs">
+    <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/40 p-3 text-xs">
       {JSON.stringify(result, null, 2)}
     </pre>
   )
