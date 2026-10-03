@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && apt-get install -y \
     systemd \
     systemd-sysv \
+    iproute2 \
     openssh-server \
     sudo \
     docker-ce \
