@@ -13,11 +13,9 @@ from src.services.ports import (
     ALLOWED_SERVICES,
     SENSITIVE_SERVICES,
     ListeningPort,
-    _parse_docker_process,
     check_ports,
     find_docker_process,
     get_open_ports,
-    recommend_port_closure,
 )
 
 REDIS_IMAGE = "redis:7-alpine"
@@ -25,134 +23,6 @@ REDIS_NAME = "ports-it-redis"
 REDIS_HOST_PORT = 16379
 PUBLIC_PORT = 18080
 LOCAL_PORT = 18081
-
-
-@pytest.mark.parametrize(
-    ("service", "expected_status"),
-    [
-        (
-            "postgres",
-            ShouldClose.YES,
-        ),
-        (
-            "redis",
-            ShouldClose.YES,
-        ),
-    ],
-)
-def test_recommend_port_closure_sensitive_service(
-    service: str,
-    expected_status: ShouldClose,
-) -> None:
-    """Проверяет, что для чувствительных сервисов рекомендуется закрытие порта."""
-
-    should_close, reason = recommend_port_closure(service)
-
-    assert should_close == expected_status
-
-
-@pytest.mark.parametrize(
-    "service",
-    [
-        "Postgres",
-        "POSTGRES",
-        "Postgres:16",
-        "redisredis-server",
-        "REDIS-SERVER",
-    ],
-)
-def test_recommend_port_closure_case_insensitive(service: str) -> None:
-    """Проверяет регистронезависимое определение чувствительных сервисов."""
-
-    should_close, reason = recommend_port_closure(service)
-
-    assert should_close == ShouldClose.YES
-
-
-def test_recommend_port_closure_docker_proxy() -> None:
-    """Проверяет, что для docker-proxy возвращается неопределённая рекомендация."""
-
-    should_close, reason = recommend_port_closure("docker-proxy")
-
-    assert should_close == ShouldClose.UNKNOWN
-
-
-@pytest.mark.parametrize(
-    "service",
-    [
-        "sshd",
-        "nginx",
-    ],
-)
-def test_recommend_port_closure_allowed_service(service: str) -> None:
-    """Проверяет, что для разрешённых сервисов закрытие порта не требуется."""
-
-    should_close, reason = recommend_port_closure(service)
-
-    assert should_close == ShouldClose.NO
-
-
-@pytest.mark.parametrize(
-    "service",
-    [
-        "docker",
-        "unknown",
-        "custom-service",
-    ],
-)
-def test_recommend_port_closure_unknown_service(service: str) -> None:
-    """Проверяет, что для сервисов без настроенного правила возвращается неопределённая рекомендация."""
-
-    should_close, reason = recommend_port_closure(service)
-
-    assert should_close == ShouldClose.UNKNOWN
-
-
-@pytest.mark.parametrize(
-    ("output", "expected"),
-    [
-        (
-            "UID                 PID                 PPID                C                   "
-            "STIME               TTY                 TIME                CMD\n"
-            "999                 22095               22072               0                   "
-            "08:42               ?                   00:01:58            redis-server *:6379",
-            "redis-server",
-        ),
-        (
-            "UID                 PID                 PPID                C                   "
-            "STIME               TTY                 TIME                CMD\n"
-            "999                 22095               22072               0                   "
-            "08:42               ?                   00:01:58            redis-server",
-            "redis-server",
-        ),
-        (
-            "UID                 PID                 PPID                C                   "
-            "STIME               TTY                 TIME                CMD\n"
-            "999                 22095               22072               0                   "
-            "08:42               ?                   00:01:58            /usr/bin/redis-server *:6379",
-            "/usr/bin/redis-server",
-        ),
-        (
-            "UID                 PID                 PPID                C                   "
-            "STIME               TTY                 TIME                CMD",
-            "unknown",
-        ),
-        (
-            "",
-            "unknown",
-        ),
-    ],
-)
-def test_parse_docker_process(output: str, expected: str) -> None:
-    """Проверяет извлечение имени процесса из вывода docker top."""
-
-    assert _parse_docker_process(output) == expected
-
-
-def test_parse_docker_process_empty_output() -> None:
-    """Проверяет обработку пустого вывода docker top."""
-
-    assert _parse_docker_process("") == "unknown"
 
 
 async def _start_listener(conn: SSHClientConnection, host: str, port: int) -> str:

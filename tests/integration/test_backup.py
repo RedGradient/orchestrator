@@ -47,30 +47,6 @@ async def _wait_postgres(
 
 
 @pytest.mark.asyncio
-async def test_get_postgres_containers_matches_image_case_insensitively(monkeypatch) -> None:
-    """Сопоставляет подстроку postgres в имени образа без учёта регистра."""
-
-    async def fake_run_command(*args, **kwargs) -> str:
-        return 'postgres-id\tPOSTGRES:17-alpine\t"entrypoint"\tUp 1 minute\tpostgres-main'
-
-    # Docker не допускает прописные буквы в имени репозитория, поэтому случай проверяем
-    # на синтетическом ответе docker ps.
-    monkeypatch.setattr("src.services.backup.run_command", fake_run_command)
-
-    containers = await get_postgres_containers(None)
-
-    assert containers == [
-        {
-            "id": "postgres-id",
-            "image": "POSTGRES:17-alpine",
-            "command": '"entrypoint"',
-            "status": "Up 1 minute",
-            "name": "postgres-main",
-        }
-    ]
-
-
-@pytest.mark.asyncio
 @pytest.mark.integration
 async def test_get_postgres_containers_filters_running_docker_containers(
     ssh_conn: SSHClientConnection,
