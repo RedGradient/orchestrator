@@ -26,7 +26,7 @@ async def try_create_swap(
     size_mb = calculate_swap_size(
         free_space_bytes=await free_disk_space(conn),
         disk_size_bytes=await check_disk_size(conn),
-        ram_size_bytes=get_ram_size(),
+        ram_size_bytes=await get_ram_size(conn),
     )
 
     if size_mb is None:

@@ -1,7 +1,5 @@
 """Вспомогательные функции для работы с SWAP на удалённом хосте."""
 
-import os
-
 from asyncssh import SSHClientConnection
 
 from src.schemas import SwapEntry
@@ -59,10 +57,18 @@ def calculate_swap_size(
     return min(swap_by_ram, max_swap_by_disk)
 
 
-def get_ram_size() -> int:
-    """Возвращает общий объём RAM в байтах."""
+async def get_ram_size(conn: SSHClientConnection) -> int:
+    """Возвращает общий объём RAM удаленного хоста в байтах."""
 
-    return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    # Получаем размер RAM в килобайтах
+    ram_size_kb = await run_command(
+        conn, "awk '/^MemTotal/ {print $2}' /proc/meminfo", error="Failed to get RAM size"
+    )
+    print("RAM size", ram_size_kb)
+    if not ram_size_kb.isdigit():
+        raise ValueError(f"Invalid MemTotal value: {ram_size_kb!r}")
+
+    return int(ram_size_kb) * 1024
 
 
 async def get_swap_list(
