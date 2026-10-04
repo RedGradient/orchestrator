@@ -233,6 +233,17 @@ class Overlay2SourceStatus(BaseModel):
     detail: str
 
 
+class Overlay2Fingerprint(BaseModel):
+    """Отпечаток дерева директории overlay2, полученный без перехода по ссылкам."""
+
+    device: int
+    inode: int
+    mode: int
+    size_bytes: int = Field(ge=0)
+    mtime_ns: int = Field(ge=0)
+    entries: int = Field(ge=0)
+
+
 class Overlay2Finding(BaseModel):
     """Компактное описание одного значимого физического объекта overlay2."""
 
@@ -244,6 +255,8 @@ class Overlay2Finding(BaseModel):
     state: Overlay2FindingState
     confidence: Overlay2Confidence = Overlay2Confidence.NONE
     reason: str
+    checks: dict[str, bool] = Field(default_factory=dict)
+    fingerprint: Overlay2Fingerprint | None = None
     cleanup_method: str | None = None
 
 

@@ -12,6 +12,7 @@ from src.schemas import (
     Overlay2Confidence,
     Overlay2Finding,
     Overlay2FindingState,
+    Overlay2Fingerprint,
     Overlay2SourceStatus,
     Overlay2Summary,
 )
@@ -20,9 +21,12 @@ from src.services.helpers.ssh import run_command
 OVERLAY2_ID_PATTERN = re.compile(r"^(?:[a-z0-9]{25}|[a-f0-9]{64})(?:-init)?$")
 ANALYZE_GRACE_SECONDS = 24 * 60 * 60
 MAX_FINDINGS = 100
+CLEANUP_METHOD = "atomic_stage_then_recursive_delete"
 
 
-async def analyze_overlay2(conn: SSHClientConnection) -> Overlay2AnalyzeResult:
+async def analyze_overlay2(
+    conn: SSHClientConnection, *, max_findings: int | None = MAX_FINDINGS
+) -> Overlay2AnalyzeResult:
     """Собрать инвентарь overlay2 через SSH, не изменяя удалённый хост.
 
     Если обязательный источник данных недоступен, отчёт помечается ``unsafe``.
@@ -67,6 +71,7 @@ async def analyze_overlay2(conn: SSHClientConnection) -> Overlay2AnalyzeResult:
         for finding in findings
         if finding.state not in {Overlay2FindingState.LIVE, Overlay2FindingState.REFERENCED}
     ]
+    report_findings = visible_findings if max_findings is None else visible_findings[:max_findings]
     return Overlay2AnalyzeResult(
         docker_root=docker_root,
         overlay2_root=overlay2_root,
@@ -75,9 +80,58 @@ async def analyze_overlay2(conn: SSHClientConnection) -> Overlay2AnalyzeResult:
         sources=sources,
         unsafe=not all(source.ok for source in sources),
         summary=summary,
-        findings=visible_findings[:MAX_FINDINGS],
-        omitted_findings_count=max(0, len(visible_findings) - MAX_FINDINGS),
+        findings=report_findings,
+        omitted_findings_count=max(0, len(visible_findings) - len(report_findings)),
     )
+
+
+def plan_overlay2_cleanup(
+    first_scan: Overlay2AnalyzeResult, second_scan: Overlay2AnalyzeResult
+) -> list[Overlay2Finding]:
+    """Подтвердить неизменные orphan-кандидаты по двум полным безопасным снимкам.
+
+    Функция только формирует план. Повторная проверка непосредственно перед
+    удалением и сама очистка будут выполнены следующим этапом.
+    """
+
+    if (
+        first_scan.unsafe
+        or second_scan.unsafe
+        or first_scan.overlay2_root != second_scan.overlay2_root
+        or first_scan.inventory != second_scan.inventory
+        or first_scan.omitted_findings_count != 0
+        or second_scan.omitted_findings_count != 0
+    ):
+        return []
+
+    first_findings = {finding.path: finding for finding in first_scan.findings}
+    confirmed: list[Overlay2Finding] = []
+    for finding in second_scan.findings:
+        previous = first_findings.get(finding.path)
+        if (
+            previous is None
+            or previous.state != Overlay2FindingState.SUSPECTED_ORPHAN
+            or finding.state != Overlay2FindingState.SUSPECTED_ORPHAN
+            or previous.fingerprint is None
+            or finding.fingerprint != previous.fingerprint
+            or not finding.checks
+            or not all(finding.checks.values())
+        ):
+            continue
+        confirmed.append(
+            finding.model_copy(
+                update={
+                    "state": Overlay2FindingState.CONFIRMED_ORPHAN,
+                    "confidence": Overlay2Confidence.HIGH,
+                    "reason": (
+                        "absent from Docker metadata, link index and process references; "
+                        "older than grace period and unchanged between two full scans"
+                    ),
+                    "cleanup_method": CLEANUP_METHOD,
+                }
+            )
+        )
+    return confirmed
 
 
 async def _docker_info(
@@ -185,8 +239,16 @@ while IFS='|' read -r object_id modified; do
     case "$object_id" in
         l) continue ;;
     esac
-    size=$(du -sk -- {root}/"$object_id" | awk '{{print $1 * 1024}}') || exit 1
-    printf '%s|%s|%s\\n' "$object_id" "$modified" "$size"
+    fingerprint=$(find -P {root}/"$object_id" -printf '%D|%i|%f|%b|%T@\\n' | awk -F'|' '
+        NR == 1 {{ device = $1; inode = $2; mode = $3 }}
+        {{ size += $4 * 512; if ($5 > newest) newest = $5; entries += 1 }}
+        END {{
+            if (NR == 0) exit 1
+            printf "%s|%s|%s|", device, inode, mode
+            printf "%.0f|%.0f|%d", size, newest * 1000000000, entries - 1
+        }}
+    ') || exit 1
+    printf '%s|%s|%s\\n' "$object_id" "$modified" "$fingerprint"
 done
 """
     output = await _try_root_command(conn, command, "physical-tree", sources)
@@ -198,20 +260,27 @@ done
     inventory: dict[str, int] = {}
     for line in output.splitlines():
         parts = line.split("|")
-        if len(parts) != 3:
+        if len(parts) != 8:
             continue
-        object_id, modified, size = parts
+        object_id, modified, device, inode, mode, size, mtime_ns, entries = parts
         if not OVERLAY2_ID_PATTERN.fullmatch(object_id):
             continue
         try:
             age_seconds = max(0.0, now - float(modified))
-            size_bytes = max(0, int(float(size)))
+            fingerprint = Overlay2Fingerprint(
+                device=int(device),
+                inode=int(inode),
+                mode=int(mode, 16),
+                size_bytes=max(0, int(float(size))),
+                mtime_ns=max(0, int(float(mtime_ns))),
+                entries=max(0, int(entries)),
+            )
         except ValueError:
             continue
         finding = _classify_finding(
             object_id,
             f"{overlay2_root}/{object_id}",
-            size_bytes,
+            fingerprint,
             age_seconds,
             aliases,
             layerdb_ids,
@@ -226,7 +295,7 @@ done
 def _classify_finding(
     object_id: str,
     path: str,
-    size_bytes: int,
+    fingerprint: Overlay2Fingerprint,
     age_seconds: float,
     aliases: set[str],
     layerdb_ids: set[str],
@@ -235,6 +304,13 @@ def _classify_finding(
 ) -> Overlay2Finding:
     """Определить безопасное предварительное состояние одной директории overlay2."""
 
+    checks = {
+        "absent_from_layerdb": object_id not in layerdb_ids,
+        "absent_from_container_inspect": object_id not in container_ids,
+        "absent_from_kernel_and_processes": object_id not in process_ids,
+        "absent_from_overlay2_link_index": object_id not in aliases,
+        "older_than_grace": age_seconds >= ANALYZE_GRACE_SECONDS,
+    }
     if object_id in process_ids:
         state, confidence, reason = (
             Overlay2FindingState.LIVE,
@@ -269,11 +345,14 @@ def _classify_finding(
         object_type="overlay2-directory",
         object_id=object_id,
         path=path,
-        size_bytes=size_bytes,
+        size_bytes=fingerprint.size_bytes,
         age_seconds=age_seconds,
         state=state,
         confidence=confidence,
         reason=reason,
+        checks=checks,
+        fingerprint=fingerprint,
+        cleanup_method=CLEANUP_METHOD,
     )
 
 
