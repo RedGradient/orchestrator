@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import asyncssh
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from src.models import Host, OperationTask
 from src.schemas import Command
 from src.services.backup import postgres_dump
+from src.services.checker import make_checks
 from src.services.docker import docker_cleanup
 from src.services.logs import logs_cleanup
 from src.services.ports import check_ports
@@ -17,33 +18,54 @@ from src.settings import settings
 
 
 async def execute_operation_task_action(task: OperationTask) -> dict[str, Any]:
-    """Открывает SSH-соединение и выполняет одно логическое действие задачи."""
+    """Выполняет действие задачи и подготавливает результат для хранения в JSONB."""
 
-    async with asyncio.timeout(settings.ssh_action_timeout_seconds):
-        async with asyncssh.connect(
-            str(task.host.ip),
-            username=task.host.username,
-            password=task.host.password,
-            known_hosts=None,
-            connect_timeout=settings.ssh_connection_timeout_seconds,
-        ) as conn:
-            result = await dispatch_action(
-                conn,
-                command=task.command,
-                host=task.host,
-                parameters=task.parameters,
-            )
+    result = await dispatch_action(
+        command=task.command,
+        host=task.host,
+        parameters=task.parameters,
+    )
     return serialize_action_result(result)
 
 
 async def dispatch_action(
+    *,
+    command: str,
+    host: Host,
+    parameters: dict[str, Any] | None = None,
+) -> BaseModel | dict[str, Any]:
+    """Маршрутизирует действие и открывает SSH только для SSH-действий."""
+
+    async with asyncio.timeout(settings.ssh_action_timeout_seconds):
+        match Command(command):
+            case Command.SITE_CHECK:
+                if not host.site_url:
+                    raise ValueError(f"Host {host.id} does not have a site URL")
+                return await make_checks(HttpUrl(host.site_url))
+            case _:
+                async with asyncssh.connect(
+                    str(host.ip),
+                    username=host.username,
+                    password=host.password,
+                    known_hosts=None,
+                    connect_timeout=settings.ssh_connection_timeout_seconds,
+                ) as conn:
+                    return await dispatch_ssh_action(
+                        conn,
+                        command=command,
+                        host=host,
+                        parameters=parameters,
+                    )
+
+
+async def dispatch_ssh_action(
     conn: asyncssh.SSHClientConnection,
     *,
     command: str,
     host: Host,
     parameters: dict[str, Any] | None = None,
 ) -> BaseModel | dict[str, Any]:
-    """Выбирает существующее async-действие без привязки к FastAPI или Celery."""
+    """Выполняет действие, которому требуется SSH-соединение с хостом."""
 
     del parameters  # Зарезервировано для действий с параметрами в будущих версиях API.
 
@@ -58,6 +80,8 @@ async def dispatch_action(
             return await logs_cleanup(conn)
         case Command.PORTS:
             return await check_ports(conn)
+        case Command.SITE_CHECK:
+            raise ValueError("Site check must be executed without an SSH connection")
 
 
 def serialize_action_result(result: BaseModel | dict[str, Any]) -> dict[str, Any]:

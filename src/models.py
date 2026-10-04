@@ -11,13 +11,6 @@ class Base(DeclarativeBase):
     pass
 
 
-class CheckTrigger(StrEnum):
-    """Кто инициировал проверку."""
-
-    MANUAL = "manual"
-    AUTOMATIC = "automatic"
-
-
 class OperationStatus(StrEnum):
     """Состояние пользовательского запуска."""
 
@@ -43,53 +36,6 @@ class OperationTaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
-class Site(Base):
-    """Сайт, для которого сохраняются проверки."""
-
-    __tablename__ = "sites"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    url: Mapped[str] = mapped_column(Text, unique=True)
-    domain: Mapped[str] = mapped_column(Text, index=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-    )
-
-    checks: Mapped[list[Check]] = relationship(
-        back_populates="site",
-        cascade="all, delete-orphan",
-        order_by="Check.created_at.desc()",
-    )
-
-
-class Check(Base):
-    """Один запуск проверки сайта."""
-
-    __tablename__ = "checks"
-    __table_args__ = (Index("ix_checks_site_id_created_at", "site_id", "created_at"),)
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id"))
-    trigger: Mapped[CheckTrigger] = mapped_column(
-        Enum(
-            CheckTrigger,
-            name="check_trigger",
-            native_enum=False,
-            length=16,
-            values_callable=lambda enum: [item.value for item in enum],
-        ),
-        nullable=False,
-    )
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-    )
-
-    site: Mapped[Site] = relationship(back_populates="checks")
-
-
 class Host(Base):
     """Удалённый хост для SSH-подключения."""
 
@@ -105,6 +51,7 @@ class Host(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     label: Mapped[str | None] = mapped_column(String(255))
+    site_url: Mapped[str | None] = mapped_column(String(2048))
     ip: Mapped[str] = mapped_column(String(45), nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)

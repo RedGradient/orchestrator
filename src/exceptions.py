@@ -39,6 +39,18 @@ class HostsNotFoundError(Exception):
         super().__init__(f"Не найдены хосты с идентификаторами: {identifiers}")
 
 
+class HostsWithoutSiteUrlError(Exception):
+    """Для части хостов не указан сайт, необходимый для проверки."""
+
+    def __init__(self, hosts: list[tuple[int, str | None, str]]):
+        self.host_ids = [host_id for host_id, _, _ in hosts]
+        self.hosts = [{"id": host_id, "label": label, "ip": ip} for host_id, label, ip in hosts]
+        names = ", ".join(f"{label} ({ip})" if label else ip for _, label, ip in hosts)
+        super().__init__(
+            f"Чтобы запустить проверку сайта, укажите адрес сайта для следующих хостов: {names}."
+        )
+
+
 class OperationNotFoundError(Exception):
     """Операция не найдена."""
 

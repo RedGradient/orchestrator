@@ -18,6 +18,7 @@ export type TaskStatus =
   | "cancelled"
 
 export type Command =
+  | "site_check"
   | "docker_cleanup"
   | "postgres_backup"
   | "create_swap"
@@ -27,6 +28,7 @@ export type Command =
 export interface Host {
   id: number
   label: string | null
+  site_url: string | null
   ip: string
   username: string
   created_at: string
@@ -34,6 +36,7 @@ export interface Host {
 
 export interface RegisterHostInput {
   label?: string | null
+  site_url?: string | null
   ip: string
   username: string
   password: string
@@ -42,12 +45,14 @@ export interface RegisterHostInput {
 export interface RegisterHostResponse {
   id: number
   label: string | null
+  site_url: string | null
   ip: string
   username: string
 }
 
 export interface UpdateHostInput {
   label: string | null
+  site_url: string | null
   ip: string
   password?: string
 }
@@ -178,11 +183,4 @@ export interface CheckResult {
   ssl: SslCheckResult | null
   robots: RobotsCheckResult | null
   sitemap: SitemapCheckResult | null
-}
-
-export interface CheckHistoryItem {
-  id: number
-  created_at: string
-  trigger: string
-  result: CheckResult
 }

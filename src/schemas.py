@@ -8,10 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 from src.models import OperationStatus, OperationTaskStatus
 
 
-class CheckRequest(BaseModel):
-    url: HttpUrl
-
-
 class HttpCheckResult(BaseModel):
     ok: bool
     status_code: int | None = None
@@ -58,24 +54,19 @@ class CheckResponse(BaseModel):
     sitemap: SitemapCheckResult | None = None
 
 
-class CheckHistoryItem(BaseModel):
-    id: int
-    created_at: datetime
-    trigger: str
-    result: CheckResponse
-
-
 class HostItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     label: str | None
+    site_url: str | None
     ip: str
     username: str
     created_at: datetime
 
 
 class Command(StrEnum):
+    SITE_CHECK = "site_check"
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
     CREATE_SWAP = "create_swap"
@@ -214,6 +205,7 @@ class DockerPruneResult(BaseModel):
 
 class RegisterHostRequest(BaseModel):
     label: str | None = Field(default=None, max_length=255)
+    site_url: HttpUrl | None = None
     ip: IPv4Address
     username: str = Field(min_length=1)
     password: str = Field(min_length=1)
@@ -225,18 +217,32 @@ class RegisterHostRequest(BaseModel):
             return label.strip() or None
         return label
 
+    @field_validator("site_url", mode="before")
+    @classmethod
+    def normalize_site_url(cls, site_url: object) -> object:
+        if not isinstance(site_url, str):
+            return site_url
+        normalized_url = site_url.strip()
+        if not normalized_url:
+            return None
+        if not normalized_url.startswith(("http://", "https://")):
+            return f"https://{normalized_url}"
+        return normalized_url
+
 
 class RegisterHostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     label: str | None
+    site_url: str | None
     ip: str
     username: str
 
 
 class UpdateHostRequest(BaseModel):
     label: str | None = Field(default=None, max_length=255)
+    site_url: HttpUrl | None = None
     ip: IPv4Address | None = None
     password: str | None = Field(default=None, min_length=1)
 
@@ -246,6 +252,11 @@ class UpdateHostRequest(BaseModel):
         if isinstance(label, str):
             return label.strip() or None
         return label
+
+    @field_validator("site_url", mode="before")
+    @classmethod
+    def normalize_site_url(cls, site_url: object) -> object:
+        return RegisterHostRequest.normalize_site_url(site_url)
 
 
 class SwapEntry(BaseModel):

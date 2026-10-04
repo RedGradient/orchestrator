@@ -16,6 +16,7 @@ async def create_host(
     await ensure_active_ip_available(session, ip)
     host = Host(
         label=request.label,
+        site_url=str(request.site_url) if request.site_url is not None else None,
         ip=ip,
         username=request.username,
         password=request.password,
@@ -28,6 +29,7 @@ async def create_host(
     return RegisterHostResponse(
         id=host.id,
         label=host.label,
+        site_url=host.site_url,
         ip=host.ip,
         username=host.username,
     )
@@ -55,6 +57,8 @@ async def update_host(
         host.ip = ip
     if "label" in fields:
         host.label = request.label
+    if "site_url" in fields:
+        host.site_url = str(request.site_url) if request.site_url is not None else None
     if "password" in fields and request.password is not None:
         host.password = request.password
 

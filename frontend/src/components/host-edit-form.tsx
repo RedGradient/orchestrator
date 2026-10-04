@@ -23,6 +23,7 @@ export function HostEditForm({ host, onSaved, onClose }: HostEditFormProps) {
     const password = String(data.get("password") ?? "")
     const input: UpdateHostInput = {
       label: String(data.get("label") ?? "").trim() || null,
+      site_url: String(data.get("site_url") ?? "").trim() || null,
       ip: String(data.get("ip") ?? "").trim(),
     }
     if (password) input.password = password
@@ -52,7 +53,7 @@ export function HostEditForm({ host, onSaved, onClose }: HostEditFormProps) {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <label className="grid gap-1.5 text-xs font-medium">
           Название
           <Input name="label" maxLength={255} defaultValue={host.label ?? ""} placeholder="Production" />
@@ -60,6 +61,10 @@ export function HostEditForm({ host, onSaved, onClose }: HostEditFormProps) {
         <label className="grid gap-1.5 text-xs font-medium">
           IP-адрес
           <Input name="ip" inputMode="decimal" defaultValue={host.ip} required />
+        </label>
+        <label className="grid gap-1.5 text-xs font-medium">
+          Адрес сайта
+          <Input name="site_url" inputMode="url" defaultValue={host.site_url ?? ""} placeholder="example.com" autoComplete="url" />
         </label>
         <label className="grid gap-1.5 text-xs font-medium">
           Новый пароль

@@ -1,8 +1,6 @@
 import type {
   ApiErrorPayload,
   ApiValidationIssue,
-  CheckHistoryItem,
-  CheckResult,
   CreateOperationInput,
   Host,
   Operation,
@@ -136,10 +134,6 @@ function jsonRequest(method: "POST", body?: unknown): RequestInit {
 }
 
 export const api = {
-  runSiteCheck: (url: string) =>
-    request<CheckResult>("/api/check", jsonRequest("POST", { url })),
-  listSiteChecks: (signal?: AbortSignal) =>
-    request<CheckHistoryItem[]>("/api/checks", { signal }),
   listHosts: (signal?: AbortSignal) => request<Host[]>("/api/hosts", { signal }),
   registerHost: (input: RegisterHostInput) =>
     request<RegisterHostResponse>("/api/host", jsonRequest("POST", input)),

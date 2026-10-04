@@ -13,9 +13,6 @@ from starlette.responses import Response
 from src.exc_handlers import register_exception_handlers
 from src.models import OperationStatus
 from src.schemas import (
-    CheckHistoryItem,
-    CheckRequest,
-    CheckResponse,
     Command,
     CommandRequest,
     CommandResponse,
@@ -30,7 +27,6 @@ from src.schemas import (
     UpdateHostRequest,
 )
 from src.services.backup import postgres_dump
-from src.services.checker import list_checks, make_checks
 from src.services.docker import docker_cleanup
 from src.services.host import create_host, delete_host, get_active_host, list_hosts, update_host
 from src.services.logs import logs_cleanup
@@ -70,21 +66,6 @@ class SPAStaticFiles(StaticFiles):
 app = FastAPI()
 
 register_exception_handlers(app)
-
-
-@app.post("/api/check")
-async def check(
-    request: CheckRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> CheckResponse:
-    return await make_checks(request, session)
-
-
-@app.get("/api/checks")
-async def checks(
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> list[CheckHistoryItem]:
-    return await list_checks(session)
 
 
 @app.post("/api/operations", status_code=status.HTTP_202_ACCEPTED)
@@ -244,11 +225,6 @@ async def remove_host(
 ) -> Response:
     await delete_host(session, host_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@app.get("/check.html", include_in_schema=False)
-async def legacy_check_page() -> RedirectResponse:
-    return RedirectResponse(url="/checks", status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
 @app.get("/action.html", include_in_schema=False)

@@ -7,6 +7,7 @@ from src.exceptions import (
     HostIpAlreadyExistsError,
     HostNotFoundError,
     HostsNotFoundError,
+    HostsWithoutSiteUrlError,
     OperationNotFoundError,
     UnsupportedOperationParametersError,
 )
@@ -80,6 +81,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=404,
             content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(HostsWithoutSiteUrlError)
+    async def hosts_without_site_url_handler(
+        _request: Request,
+        exc: HostsWithoutSiteUrlError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": str(exc), "host_ids": exc.host_ids, "hosts": exc.hosts},
         )
 
     @app.exception_handler(UnsupportedOperationParametersError)

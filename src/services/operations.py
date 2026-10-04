@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from src.exceptions import (
     HostsNotFoundError,
+    HostsWithoutSiteUrlError,
     OperationNotFoundError,
     UnsupportedOperationParametersError,
 )
@@ -47,6 +48,16 @@ async def create_operation(
     missing_host_ids = [host_id for host_id in request.host_ids if host_id not in hosts_by_id]
     if missing_host_ids:
         raise HostsNotFoundError(missing_host_ids)
+    if any(action.command == Command.SITE_CHECK for action in request.actions):
+        hosts_without_site_url = [
+            hosts_by_id[host_id]
+            for host_id in request.host_ids
+            if not hosts_by_id[host_id].site_url
+        ]
+        if hosts_without_site_url:
+            raise HostsWithoutSiteUrlError(
+                [(host.id, host.label, host.ip) for host in hosts_without_site_url]
+            )
 
     operation = Operation(status=OperationStatus.PENDING)
     session.add(operation)
