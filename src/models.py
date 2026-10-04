@@ -105,6 +105,7 @@ class Host(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     label: Mapped[str | None] = mapped_column(String(255))
+    site_url: Mapped[str | None] = mapped_column(String(2048))
     ip: Mapped[str] = mapped_column(String(45), nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)

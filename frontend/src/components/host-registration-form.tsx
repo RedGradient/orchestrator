@@ -25,6 +25,7 @@ export function HostRegistrationForm({ onCreated, onClose }: HostRegistrationFor
     try {
       await api.registerHost({
         label: label || null,
+        site_url: String(data.get("site_url") ?? "").trim() || null,
         ip: String(data.get("ip") ?? "").trim(),
         username: String(data.get("username") ?? "").trim(),
         password: String(data.get("password") ?? ""),
@@ -53,7 +54,7 @@ export function HostRegistrationForm({ onCreated, onClose }: HostRegistrationFor
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <label className="grid gap-1.5 text-xs font-medium">
           Название
           <Input name="label" maxLength={255} placeholder="Production" autoComplete="off" />
@@ -61,6 +62,10 @@ export function HostRegistrationForm({ onCreated, onClose }: HostRegistrationFor
         <label className="grid gap-1.5 text-xs font-medium">
           IP-адрес
           <Input name="ip" inputMode="decimal" placeholder="192.0.2.10" required />
+        </label>
+        <label className="grid gap-1.5 text-xs font-medium">
+          Адрес сайта
+          <Input name="site_url" inputMode="url" placeholder="example.com" autoComplete="url" />
         </label>
         <label className="grid gap-1.5 text-xs font-medium">
           Пользователь
