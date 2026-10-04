@@ -4,11 +4,16 @@ import json
 import re
 import shlex
 import time
+import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from asyncssh import SSHClientConnection
 
 from src.schemas import (
     Overlay2AnalyzeResult,
+    Overlay2CleanupRecord,
+    Overlay2CleanupResult,
     Overlay2Confidence,
     Overlay2Finding,
     Overlay2FindingState,
@@ -22,6 +27,8 @@ OVERLAY2_ID_PATTERN = re.compile(r"^(?:[a-z0-9]{25}|[a-f0-9]{64})(?:-init)?$")
 ANALYZE_GRACE_SECONDS = 24 * 60 * 60
 MAX_FINDINGS = 100
 CLEANUP_METHOD = "atomic_stage_then_recursive_delete"
+CLEANUP_RECHECK_DELAY_SECONDS = 30
+CLEANUP_LOCK_PATH = "/run/lock/orchestrator-overlay2-cleanup.lock"
 
 
 async def analyze_overlay2(
@@ -132,6 +139,80 @@ def plan_overlay2_cleanup(
             )
         )
     return confirmed
+
+
+async def cleanup_overlay2(conn: SSHClientConnection) -> Overlay2CleanupResult:
+    """Безопасно удалить подтверждённые orphan-директории overlay2 через SSH."""
+
+    async with _remote_cleanup_lock(conn):
+        first_scan = await analyze_overlay2(conn, max_findings=None)
+        await run_command(
+            conn,
+            f"sleep {CLEANUP_RECHECK_DELAY_SECONDS}",
+            error="Overlay2 cleanup recheck delay failed",
+        )
+        second_scan = await analyze_overlay2(conn, max_findings=None)
+        operation_plan = plan_overlay2_cleanup(first_scan, second_scan)
+
+        operations: list[Overlay2CleanupRecord] = []
+        freed_bytes = 0
+        for candidate in operation_plan:
+            fresh_scan = await analyze_overlay2(conn, max_findings=None)
+            safe, reason = _candidate_is_safe(candidate, fresh_scan)
+            if not safe:
+                operations.append(
+                    Overlay2CleanupRecord(
+                        path=candidate.path,
+                        result=f"SKIPPED: {reason}",
+                        method=CLEANUP_METHOD,
+                    )
+                )
+                continue
+            try:
+                result = await _stage_and_delete_candidate(conn, candidate)
+            except Exception as exc:
+                operations.append(
+                    Overlay2CleanupRecord(
+                        path=candidate.path,
+                        result=f"FAILED: {type(exc).__name__}: {exc}",
+                        method=CLEANUP_METHOD,
+                    )
+                )
+                continue
+            operations.append(
+                Overlay2CleanupRecord(
+                    path=candidate.path,
+                    result=result,
+                    method=CLEANUP_METHOD,
+                )
+            )
+            if result == "DELETED":
+                freed_bytes += candidate.size_bytes
+
+        final_scan = await analyze_overlay2(conn)
+    return Overlay2CleanupResult(
+        **final_scan.model_dump(),
+        operation_plan=operation_plan,
+        operations=operations,
+        freed_bytes=freed_bytes,
+    )
+
+
+def _candidate_is_safe(
+    candidate: Overlay2Finding, fresh_scan: Overlay2AnalyzeResult
+) -> tuple[bool, str]:
+    """Проверить кандидата повторным полным снимком непосредственно перед удалением."""
+
+    if fresh_scan.unsafe or fresh_scan.omitted_findings_count:
+        return False, "fresh safety inventory is incomplete"
+    fresh = next((item for item in fresh_scan.findings if item.path == candidate.path), None)
+    if fresh is None or fresh.state != Overlay2FindingState.SUSPECTED_ORPHAN:
+        return False, "candidate gained a reference or disappeared"
+    if fresh.fingerprint != candidate.fingerprint:
+        return False, "candidate changed after confirmation"
+    if not fresh.checks or not all(fresh.checks.values()):
+        return False, "candidate no longer passes all orphan checks"
+    return True, "candidate passed immediate safety checks"
 
 
 async def _docker_info(
@@ -377,6 +458,105 @@ def _build_summary(findings: list[Overlay2Finding]) -> Overlay2Summary:
     return summary
 
 
+async def _stage_and_delete_candidate(conn: SSHClientConnection, candidate: Overlay2Finding) -> str:
+    """Атомарно переместить проверенный объект в staging-каталог и удалить его."""
+
+    if candidate.fingerprint is None or not OVERLAY2_ID_PATTERN.fullmatch(candidate.object_id):
+        raise ValueError("Overlay2 cleanup candidate has no valid fingerprint or identifier")
+    overlay_root = candidate.path.rsplit("/", maxsplit=1)[0]
+    destination_name = f"{candidate.object_id}.{uuid.uuid4().hex}"
+    command = _delete_candidate_command(
+        overlay_root,
+        candidate.object_id,
+        destination_name,
+        _fingerprint_value(candidate.fingerprint),
+    )
+    return await _try_root_command_or_raise(conn, command, "Overlay2 candidate cleanup failed")
+
+
+def _delete_candidate_command(
+    overlay_root: str, object_id: str, destination_name: str, expected: str
+) -> str:
+    """Построить shell-команду безопасного staging и удаления одного кандидата."""
+
+    return f"""
+overlay_root={shlex.quote(overlay_root)}
+object_id={shlex.quote(object_id)}
+source="$overlay_root/$object_id"
+trash="$overlay_root/../.orchestrator-overlay2-trash"
+destination="$trash/{destination_name}"
+expected={shlex.quote(expected)}
+
+fingerprint() {{
+    find -P "$1" -printf '%D|%i|%f|%b|%T@\n' | awk -F'|' '
+        NR == 1 {{ device = $1; inode = $2; mode = $3 }}
+        {{ size += $4 * 512; if ($5 > newest) newest = $5; entries += 1 }}
+        END {{
+            if (NR == 0) exit 1
+            printf "%s|%s|%s|", device, inode, mode
+            printf "%.0f|%.0f|%d", size, newest * 1000000000, entries - 1
+        }}
+    '
+}}
+
+[ -d "$source" ] && [ ! -L "$source" ] || {{ echo "candidate is not a real directory"; exit 2; }}
+[ "$(fingerprint "$source")" = "$expected" ] || {{
+    echo "candidate changed before staging"
+    exit 3
+}}
+if [ -e "$trash" ] && {{ [ -L "$trash" ] || [ ! -d "$trash" ]; }}; then
+    echo "staging path is not a real directory"
+    exit 4
+fi
+mkdir -p -m 700 "$trash"
+[ "$(stat -c '%d' "$trash")" = "$(stat -c '%d' "$overlay_root")" ] || {{
+    echo "staging path is on another filesystem"
+    exit 5
+}}
+[ ! -e "$destination" ] || {{ echo "staging destination already exists"; exit 6; }}
+mv -- "$source" "$destination"
+if [ "$(fingerprint "$destination")" != "$expected" ]; then
+    if [ ! -e "$source" ]; then
+        mv -- "$destination" "$source"
+        echo "candidate changed during staging and was restored"
+    else
+        echo "candidate changed during staging and was preserved in staging"
+    fi
+    exit 7
+fi
+find -P "$destination" -depth -delete
+printf 'DELETED'
+"""
+
+
+@asynccontextmanager
+async def _remote_cleanup_lock(conn: SSHClientConnection) -> AsyncIterator[None]:
+    """Удерживать удалённую flock-блокировку в течение всего действия очистки."""
+
+    command = f"""
+exec 9>{shlex.quote(CLEANUP_LOCK_PATH)}
+flock -n 9 || {{ printf 'LOCKED\n'; exit 1; }}
+printf 'ACQUIRED\n'
+read _
+"""
+    process = await conn.create_process(_as_root_command(command))
+    if process.stdout is None:
+        raise RuntimeError("Overlay2 cleanup lock did not provide stdout")
+    status = await process.stdout.readline()
+    if status != "ACQUIRED\n":
+        if process.stdin is not None:
+            process.stdin.write_eof()
+        await process.wait_closed()
+        raise RuntimeError("Another overlay2 cleanup is already running on this host")
+    try:
+        yield
+    finally:
+        if process.stdin is not None:
+            process.stdin.write("\n")
+            process.stdin.write_eof()
+        await process.wait_closed()
+
+
 async def _try_command(
     conn: SSHClientConnection,
     command: str,
@@ -402,12 +582,38 @@ async def _try_root_command(
 ) -> str | None:
     """Выполнить команду с правами root или через беспарольный ``sudo``."""
 
+    return await _try_command(conn, _as_root_command(command), source_name, sources)
+
+
+async def _try_root_command_or_raise(conn: SSHClientConnection, command: str, error: str) -> str:
+    """Выполнить root-команду и передать её ошибку вызывающему коду."""
+
+    return await run_command(conn, _as_root_command(command), error=error)
+
+
+def _as_root_command(command: str) -> str:
+    """Обернуть команду для выполнения root-пользователем или через ``sudo -n``."""
+
     quoted_command = shlex.quote(command)
-    root_command = (
+    return (
         f'if [ "$(id -u)" -eq 0 ]; then sh -c {quoted_command}; '
         f"else sudo -n sh -c {quoted_command}; fi"
     )
-    return await _try_command(conn, root_command, source_name, sources)
+
+
+def _fingerprint_value(fingerprint: Overlay2Fingerprint) -> str:
+    """Сериализовать отпечаток в формат, который сравнивает удалённая shell-команда."""
+
+    return "|".join(
+        (
+            str(fingerprint.device),
+            str(fingerprint.inode),
+            format(fingerprint.mode, "x"),
+            str(fingerprint.size_bytes),
+            str(fingerprint.mtime_ns),
+            str(fingerprint.entries),
+        )
+    )
 
 
 def _overlay_ids(value: str) -> set[str]:

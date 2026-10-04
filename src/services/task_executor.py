@@ -12,7 +12,7 @@ from src.services.backup import postgres_dump
 from src.services.checker import make_checks
 from src.services.docker import docker_cleanup
 from src.services.logs import logs_cleanup
-from src.services.overlay2 import analyze_overlay2
+from src.services.overlay2 import analyze_overlay2, cleanup_overlay2
 from src.services.ports import check_ports
 from src.services.swap import try_create_swap
 from src.settings import settings
@@ -86,7 +86,7 @@ async def dispatch_ssh_action(
         case Command.OVERLAY2_ANALYZE:
             return await analyze_overlay2(conn)
         case Command.OVERLAY2_CLEANUP:
-            raise NotImplementedError(f"Action {command} is not implemented yet")
+            return await cleanup_overlay2(conn)
 
 
 def serialize_action_result(result: BaseModel | dict[str, Any]) -> dict[str, Any]:
