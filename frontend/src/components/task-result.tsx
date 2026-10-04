@@ -1,7 +1,9 @@
 import { Check, X } from "lucide-react"
 import type { ReactNode } from "react"
 
+import { SiteCheckReport } from "@/components/site-check-report"
 import type { Command } from "@/lib/api-types"
+import type { CheckResult } from "@/lib/api-types"
 import { formatBytes } from "@/lib/format"
 
 interface TaskResultProps {
@@ -156,6 +158,9 @@ function Metric({ label, value }: { label: string; value: ReactNode }) {
 }
 
 export function TaskResult({ command, result }: TaskResultProps) {
+  if (command === "site_check" && typeof result.url === "string") {
+    return <SiteCheckReport result={result as unknown as CheckResult} />
+  }
   if (command === "ports" && Array.isArray(result.ports)) return <PortsResult result={result} />
   if (command === "docker_cleanup" && "disk_space_reclaimed" in result) {
     return <DockerResult result={result} />

@@ -75,9 +75,8 @@ register_exception_handlers(app)
 @app.post("/api/check")
 async def check(
     request: CheckRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> CheckResponse:
-    return await make_checks(request, session)
+    return await make_checks(request)
 
 
 @app.get("/api/checks")

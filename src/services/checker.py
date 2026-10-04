@@ -4,13 +4,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.checkers import check_http, check_robots, check_sitemap, check_ssl
-from src.models import Check, CheckTrigger, Site
+from src.models import Check
 from src.schemas import CheckHistoryItem, CheckRequest, CheckResponse
 
 
-async def make_checks(
-    request: CheckRequest, session: AsyncSession, trigger: CheckTrigger = CheckTrigger.MANUAL
-) -> CheckResponse:
+async def make_checks(request: CheckRequest) -> CheckResponse:
+    """
+    Выполняет проверку сайта.
+
+    Проверяет:
+
+    - доступность сайта по HTTP;
+    - корректность SSL-сертификата;
+    - наличие и доступность robots.txt;
+    - наличие и доступность sitemap.
+
+    Если сайт недоступен по HTTP, остальные проверки не выполняются.
+    """
+
     domain = request.url.host
 
     assert domain is not None
@@ -19,13 +30,11 @@ async def make_checks(
 
     # Домен/сервер недоступен — остальные проверки выполнять бессмысленно
     if not http_result.ok:
-        response = CheckResponse(
+        return CheckResponse(
             url=request.url,
             domain=domain,
             http=http_result,
         )
-        await _save_check(session, response, trigger)
-        return response
 
     robots_result, sitemap_result = await asyncio.gather(
         check_robots(domain),
@@ -33,7 +42,7 @@ async def make_checks(
     )
     ssl_result = check_ssl(domain)
 
-    response = CheckResponse(
+    return CheckResponse(
         url=request.url,
         domain=domain,
         http=http_result,
@@ -41,30 +50,6 @@ async def make_checks(
         robots=robots_result,
         sitemap=sitemap_result,
     )
-    await _save_check(session, response, trigger)
-    return response
-
-
-async def _save_check(
-    session: AsyncSession, response: CheckResponse, trigger: CheckTrigger
-) -> None:
-    """Сохраняет результат проверки для сайта. Повторный адрес использует уже существующий сайт."""
-
-    url = str(response.url)
-    site = await session.scalar(select(Site).where(Site.url == url))
-    if site is None:
-        site = Site(url=url, domain=response.domain)
-        session.add(site)
-        await session.flush()
-
-    session.add(
-        Check(
-            site=site,
-            trigger=trigger,
-            data=response.model_dump(mode="json"),
-        )
-    )
-    await session.commit()
 
 
 async def list_checks(session: AsyncSession, limit: int = 40) -> list[CheckHistoryItem]:
