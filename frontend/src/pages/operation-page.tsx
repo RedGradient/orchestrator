@@ -1,5 +1,5 @@
 import { ArrowLeft, Radio, RefreshCw, WifiOff } from "lucide-react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { OperationSummary } from "@/components/operation-summary"
 import { PageHeader } from "@/components/page-header"
@@ -10,6 +10,7 @@ import { isTerminalOperation, useOperation } from "@/hooks/use-operation"
 
 export function OperationPage() {
   const params = useParams()
+  const navigate = useNavigate()
   const parsedId = Number(params.operationId)
   const operationId = Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : null
   const { operation, isLoading, error, realtimeState, refresh } = useOperation(operationId)
@@ -64,12 +65,24 @@ export function OperationPage() {
 
   const terminal = isTerminalOperation(operation.status)
 
+  function goBack() {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate("/operations")
+  }
+
   return (
     <main>
-      <Link to="/operations" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+      <button
+        type="button"
+        onClick={goBack}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         <ArrowLeft aria-hidden="true" className="size-4" />
-        К истории
-      </Link>
+        Назад
+      </button>
       <PageHeader
         eyebrow="Операция"
         title={`Operation #${operation.id}`}
