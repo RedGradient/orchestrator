@@ -49,9 +49,15 @@ async def create_operation(
     if missing_host_ids:
         raise HostsNotFoundError(missing_host_ids)
     if any(action.command == Command.SITE_CHECK for action in request.actions):
-        host_ids_without_site_url = [host.id for host in hosts if not host.site_url]
-        if host_ids_without_site_url:
-            raise HostsWithoutSiteUrlError(host_ids_without_site_url)
+        hosts_without_site_url = [
+            hosts_by_id[host_id]
+            for host_id in request.host_ids
+            if not hosts_by_id[host_id].site_url
+        ]
+        if hosts_without_site_url:
+            raise HostsWithoutSiteUrlError(
+                [(host.id, host.label, host.ip) for host in hosts_without_site_url]
+            )
 
     operation = Operation(status=OperationStatus.PENDING)
     session.add(operation)

@@ -90,7 +90,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
-            content={"detail": str(exc), "host_ids": exc.host_ids},
+            content={"detail": str(exc), "host_ids": exc.host_ids, "hosts": exc.hosts},
         )
 
     @app.exception_handler(UnsupportedOperationParametersError)

@@ -42,10 +42,13 @@ class HostsNotFoundError(Exception):
 class HostsWithoutSiteUrlError(Exception):
     """Для части хостов не указан сайт, необходимый для проверки."""
 
-    def __init__(self, host_ids: list[int]):
-        self.host_ids = host_ids
-        identifiers = ", ".join(map(str, host_ids))
-        super().__init__(f"Для хостов не указан адрес сайта: {identifiers}")
+    def __init__(self, hosts: list[tuple[int, str | None, str]]):
+        self.host_ids = [host_id for host_id, _, _ in hosts]
+        self.hosts = [{"id": host_id, "label": label, "ip": ip} for host_id, label, ip in hosts]
+        names = ", ".join(f"{label} ({ip})" if label else ip for _, label, ip in hosts)
+        super().__init__(
+            f"Чтобы запустить проверку сайта, укажите адрес сайта для следующих хостов: {names}."
+        )
 
 
 class OperationNotFoundError(Exception):
