@@ -39,6 +39,15 @@ class HostsNotFoundError(Exception):
         super().__init__(f"Не найдены хосты с идентификаторами: {identifiers}")
 
 
+class HostsWithoutSiteUrlError(Exception):
+    """Для части хостов не указан сайт, необходимый для проверки."""
+
+    def __init__(self, host_ids: list[int]):
+        self.host_ids = host_ids
+        identifiers = ", ".join(map(str, host_ids))
+        super().__init__(f"Для хостов не указан адрес сайта: {identifiers}")
+
+
 class OperationNotFoundError(Exception):
     """Операция не найдена."""
 

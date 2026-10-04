@@ -18,6 +18,7 @@ export type TaskStatus =
   | "cancelled"
 
 export type Command =
+  | "site_check"
   | "docker_cleanup"
   | "postgres_backup"
   | "create_swap"

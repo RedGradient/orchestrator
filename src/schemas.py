@@ -77,6 +77,7 @@ class HostItem(BaseModel):
 
 
 class Command(StrEnum):
+    SITE_CHECK = "site_check"
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
     CREATE_SWAP = "create_swap"

@@ -58,6 +58,8 @@ async def dispatch_action(
             return await logs_cleanup(conn)
         case Command.PORTS:
             return await check_ports(conn)
+        case Command.SITE_CHECK:
+            raise NotImplementedError("Site check execution is not implemented yet")
 
 
 def serialize_action_result(result: BaseModel | dict[str, Any]) -> dict[str, Any]:

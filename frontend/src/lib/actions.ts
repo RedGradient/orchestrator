@@ -8,6 +8,11 @@ export interface ActionDefinition {
 
 export const actions: ActionDefinition[] = [
   {
+    command: "site_check",
+    title: "Site Check",
+    description: "Проверяет доступность сайта, SSL, robots.txt и sitemap.xml для выбранного хоста.",
+  },
+  {
     command: "docker_cleanup",
     title: "Docker Cleanup",
     description: "Удаляет неиспользуемые контейнеры, образы, сети, volumes и build cache.",
