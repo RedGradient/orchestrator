@@ -320,16 +320,15 @@ while IFS='|' read -r object_id modified; do
     case "$object_id" in
         l) continue ;;
     esac
-    fingerprint=$(find -P {root}/"$object_id" -printf '%D|%i|%f|%b|%T@\\n' | awk -F'|' '
-        NR == 1 {{ device = $1; inode = $2; mode = $3 }}
-        {{ size += $4 * 512; if ($5 > newest) newest = $5; entries += 1 }}
+    root_info=$(stat -c '%d|%i|%f' -- {root}/"$object_id") || exit 1
+    tree_info=$(find -P {root}/"$object_id" -printf '%b|%T@\\n' | awk -F'|' '
+        {{ size += $1 * 512; if ($2 > newest) newest = $2; entries += 1 }}
         END {{
             if (NR == 0) exit 1
-            printf "%s|%s|%s|", device, inode, mode
             printf "%.0f|%.0f|%d", size, newest * 1000000000, entries - 1
         }}
     ') || exit 1
-    printf '%s|%s|%s\\n' "$object_id" "$modified" "$fingerprint"
+    printf '%s|%s|%s|%s\\n' "$object_id" "$modified" "$root_info" "$tree_info"
 done
 """
     output = await _try_root_command(conn, command, "physical-tree", sources)
@@ -488,39 +487,45 @@ destination="$trash/{destination_name}"
 expected={shlex.quote(expected)}
 
 fingerprint() {{
-    find -P "$1" -printf '%D|%i|%f|%b|%T@\n' | awk -F'|' '
-        NR == 1 {{ device = $1; inode = $2; mode = $3 }}
-        {{ size += $4 * 512; if ($5 > newest) newest = $5; entries += 1 }}
+    root_info=$(stat -c '%d|%i|%f' -- "$1") || return 1
+    tree_info=$(find -P "$1" -printf '%b|%T@\n' | awk -F'|' '
+        {{ size += $1 * 512; if ($2 > newest) newest = $2; entries += 1 }}
         END {{
             if (NR == 0) exit 1
-            printf "%s|%s|%s|", device, inode, mode
             printf "%.0f|%.0f|%d", size, newest * 1000000000, entries - 1
         }}
-    '
+    ') || return 1
+    printf '%s|%s' "$root_info" "$tree_info"
 }}
 
-[ -d "$source" ] && [ ! -L "$source" ] || {{ echo "candidate is not a real directory"; exit 2; }}
+[ -d "$source" ] && [ ! -L "$source" ] || {{
+    printf '%s\n' "candidate is not a real directory" >&2
+    exit 2
+}}
 [ "$(fingerprint "$source")" = "$expected" ] || {{
-    echo "candidate changed before staging"
+    printf '%s\n' "candidate changed before staging" >&2
     exit 3
 }}
 if [ -e "$trash" ] && {{ [ -L "$trash" ] || [ ! -d "$trash" ]; }}; then
-    echo "staging path is not a real directory"
+    printf '%s\n' "staging path is not a real directory" >&2
     exit 4
 fi
 mkdir -p -m 700 "$trash"
 [ "$(stat -c '%d' "$trash")" = "$(stat -c '%d' "$overlay_root")" ] || {{
-    echo "staging path is on another filesystem"
+    printf '%s\n' "staging path is on another filesystem" >&2
     exit 5
 }}
-[ ! -e "$destination" ] || {{ echo "staging destination already exists"; exit 6; }}
+[ ! -e "$destination" ] || {{
+    printf '%s\n' "staging destination already exists" >&2
+    exit 6
+}}
 mv -- "$source" "$destination"
 if [ "$(fingerprint "$destination")" != "$expected" ]; then
     if [ ! -e "$source" ]; then
         mv -- "$destination" "$source"
-        echo "candidate changed during staging and was restored"
+        printf '%s\n' "candidate changed during staging and was restored" >&2
     else
-        echo "candidate changed during staging and was preserved in staging"
+        printf '%s\n' "candidate changed during staging and was preserved in staging" >&2
     fi
     exit 7
 fi
