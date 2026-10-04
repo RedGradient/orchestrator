@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Any
 
 import asyncssh
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from src.models import Host, OperationTask
-from src.schemas import CheckRequest, Command
+from src.schemas import Command
 from src.services.backup import postgres_dump
 from src.services.checker import make_checks
 from src.services.docker import docker_cleanup
@@ -41,7 +41,7 @@ async def dispatch_action(
             case Command.SITE_CHECK:
                 if not host.site_url:
                     raise ValueError(f"Host {host.id} does not have a site URL")
-                return await make_checks(CheckRequest(url=host.site_url))
+                return await make_checks(HttpUrl(host.site_url))
             case _:
                 async with asyncssh.connect(
                     str(host.ip),

@@ -8,10 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 from src.models import OperationStatus, OperationTaskStatus
 
 
-class CheckRequest(BaseModel):
-    url: HttpUrl
-
-
 class HttpCheckResult(BaseModel):
     ok: bool
     status_code: int | None = None
@@ -56,13 +52,6 @@ class CheckResponse(BaseModel):
     ssl: SslCheckResult | None = None
     robots: RobotsCheckResult | None = None
     sitemap: SitemapCheckResult | None = None
-
-
-class CheckHistoryItem(BaseModel):
-    id: int
-    created_at: datetime
-    trigger: str
-    result: CheckResponse
 
 
 class HostItem(BaseModel):

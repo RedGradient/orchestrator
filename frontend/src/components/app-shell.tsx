@@ -1,4 +1,4 @@
-import { Activity, History, PanelLeft, ServerCog } from "lucide-react"
+import { History, PanelLeft, ServerCog } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 const navigation = [
   { label: "Действия", href: "/", icon: PanelLeft, end: true },
   { label: "История", href: "/operations", icon: History, end: true },
-  { label: "Проверка сайта", href: "/checks", icon: Activity, end: false },
 ] as const
 
 export function AppShell() {

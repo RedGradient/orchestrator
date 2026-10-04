@@ -184,10 +184,3 @@ export interface CheckResult {
   robots: RobotsCheckResult | null
   sitemap: SitemapCheckResult | null
 }
-
-export interface CheckHistoryItem {
-  id: number
-  created_at: string
-  trigger: string
-  result: CheckResult
-}
