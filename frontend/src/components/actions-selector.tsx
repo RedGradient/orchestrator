@@ -1,4 +1,4 @@
-import { Box, DatabaseBackup, Globe2, HardDrive, ListRestart, ShieldCheck } from "lucide-react"
+import { Box, DatabaseBackup, Globe2, HardDrive, ListRestart, ScanSearch, ShieldCheck, Trash2 } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 
 const actionIcons = {
   site_check: Globe2,
+  overlay2_analyze: ScanSearch,
+  overlay2_cleanup: Trash2,
   docker_cleanup: Box,
   postgres_backup: DatabaseBackup,
   create_swap: HardDrive,

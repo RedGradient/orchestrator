@@ -82,6 +82,8 @@ async def dispatch_ssh_action(
             return await check_ports(conn)
         case Command.SITE_CHECK:
             raise ValueError("Site check must be executed without an SSH connection")
+        case Command.OVERLAY2_ANALYZE | Command.OVERLAY2_CLEANUP:
+            raise NotImplementedError(f"Action {command} is not implemented yet")
 
 
 def serialize_action_result(result: BaseModel | dict[str, Any]) -> dict[str, Any]:

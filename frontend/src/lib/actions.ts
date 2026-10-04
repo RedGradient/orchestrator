@@ -13,6 +13,16 @@ export const actions: ActionDefinition[] = [
     description: "Проверяет доступность сайта, HTTPS-сертификат, robots.txt и sitemap.xml.",
   },
   {
+    command: "overlay2_analyze",
+    title: "Overlay2 Analyze",
+    description: "Анализирует физические orphan-слои Docker overlay2 без изменений на хосте.",
+  },
+  {
+    command: "overlay2_cleanup",
+    title: "Overlay2 Cleanup",
+    description: "Удаляет только подтверждённые orphan-слои Docker overlay2 после повторной проверки.",
+  },
+  {
     command: "docker_cleanup",
     title: "Docker Cleanup",
     description: "Останавливает и удаляет все Docker-контейнеры, затем очищает volumes, сети, образы и build cache.",

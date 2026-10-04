@@ -19,6 +19,8 @@ export type TaskStatus =
 
 export type Command =
   | "site_check"
+  | "overlay2_analyze"
+  | "overlay2_cleanup"
   | "docker_cleanup"
   | "postgres_backup"
   | "create_swap"
