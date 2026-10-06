@@ -1,8 +1,18 @@
+import socket
+
 import pytest
 from pydantic import HttpUrl
 
 from src.services.checker import make_checks
 from tests.integration.conftest import SiteCheckServer
+
+
+def _unused_local_port() -> int:
+    """Возвращает свободный TCP-порт, который сразу освобождается для проверки отказа."""
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
 
 @pytest.mark.asyncio
@@ -44,3 +54,18 @@ async def test_make_checks_succeeds_for_site_with_http_tls_robots_and_sitemap(
     assert result.sitemap.valid is True
     assert result.sitemap.errors == []
     assert result.sitemap.url_count == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_make_checks_stops_after_http_connection_failure() -> None:
+    """Не запускает TLS, robots.txt и sitemap.xml, если сайт недоступен по HTTP."""
+
+    result = await make_checks(HttpUrl(f"http://127.0.0.1:{_unused_local_port()}"))
+
+    assert result.http is not None
+    assert result.http.ok is False
+    assert result.http.error is not None
+    assert result.ssl is None
+    assert result.robots is None
+    assert result.sitemap is None
