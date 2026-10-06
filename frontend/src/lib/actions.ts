@@ -10,32 +10,32 @@ export const actions: ActionDefinition[] = [
   {
     command: "site_check",
     title: "Site Check",
-    description: "Проверяет доступность сайта, SSL, robots.txt и sitemap.xml для выбранного хоста.",
+    description: "Проверяет доступность сайта, HTTPS-сертификат, robots.txt и sitemap.xml.",
   },
   {
     command: "docker_cleanup",
     title: "Docker Cleanup",
-    description: "Удаляет неиспользуемые контейнеры, образы, сети, volumes и build cache.",
+    description: "Останавливает и удаляет все Docker-контейнеры, затем очищает volumes, сети, образы и build cache.",
   },
   {
     command: "postgres_backup",
     title: "Postgres Backup",
-    description: "Создаёт dump баз PostgreSQL из запущенных контейнеров на хосте.",
+    description: "Находит PostgreSQL-контейнеры, создаёт дампы их баз и скачивает их на сервер Orchestrator.",
   },
   {
     command: "create_swap",
     title: "Create SWAP",
-    description: "Подбирает размер, создаёт SWAP-файл и включает его после перезагрузки.",
+    description: "Проверяет текущую SWAP и при необходимости создаёт и подключает swap-файл.",
   },
   {
     command: "logs_cleanup",
     title: "Logs Cleanup",
-    description: "Настраивает ротацию системных логов и освобождает дисковое пространство.",
+    description: "Устанавливает и настраивает logrotate и Fail2ban, ограничивает журналы systemd и Docker, очищает системные логи.",
   },
   {
     command: "ports",
     title: "Ports Checker",
-    description: "Проверяет доступные извне порты и формирует рекомендации по безопасности.",
+    description: "Находит открытые TCP-порты, включая порты Docker, и формирует рекомендации по ограничению доступа.",
   },
 ]
 

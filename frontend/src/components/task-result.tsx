@@ -31,6 +31,16 @@ function StatusValue({ value }: { value: unknown }) {
   )
 }
 
+function shouldCloseLabel(value: unknown): string {
+  const labels: Record<string, string> = {
+    yes: "Да",
+    no: "Нет",
+    unknown: "Неизвестно",
+  }
+
+  return typeof value === "string" ? (labels[value] ?? value) : "Неизвестно"
+}
+
 function PortsResult({ result }: { result: Record<string, unknown> }) {
   const ports = records(result.ports)
   if (ports.length === 0) {
@@ -44,7 +54,7 @@ function PortsResult({ result }: { result: Record<string, unknown> }) {
             <th className="px-3 py-2 font-medium">Порт</th>
             <th className="px-3 py-2 font-medium">Сервис</th>
             <th className="px-3 py-2 font-medium">Docker</th>
-            <th className="px-3 py-2 font-medium">Рекомендация</th>
+            <th className="px-3 py-2 font-medium">Стоит ли закрыть</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -54,7 +64,7 @@ function PortsResult({ result }: { result: Record<string, unknown> }) {
               <td className="px-3 py-2">{String(port.service ?? "—")}</td>
               <td className="px-3 py-2">{port.is_docker ? "Да" : "Нет"}</td>
               <td className="px-3 py-2">
-                <span className="font-medium">{String(port.should_close ?? "unknown")}</span>
+                <span className="font-medium">{shouldCloseLabel(port.should_close)}</span>
                 {port.reason ? <span className="mt-0.5 block text-xs text-muted-foreground">{String(port.reason)}</span> : null}
               </td>
             </tr>
