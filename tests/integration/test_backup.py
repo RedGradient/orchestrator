@@ -216,6 +216,7 @@ async def test_postgres_dump_fails_without_creating_local_file_when_pg_dump_erro
             await postgres_dump(ssh_conn, "test-vps", str(tmp_path))
 
         assert list((tmp_path / "test-vps").glob("*.dump")) == []
+        assert await run_command(ssh_conn, "find /tmp -maxdepth 1 -name 'postgres_*.dump'") == ""
     finally:
         # Удаление контейнера возвращает тестовый VPS в исходное состояние.
         await run_command(ssh_conn, f"docker rm -f {shlex.quote(container_name)} || true")
