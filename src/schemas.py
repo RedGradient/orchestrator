@@ -67,6 +67,8 @@ class HostItem(BaseModel):
 
 class Command(StrEnum):
     SITE_CHECK = "site_check"
+    OVERLAY2_ANALYZE = "overlay2_analyze"
+    OVERLAY2_CLEANUP = "overlay2_cleanup"
     DOCKER_CLEANUP = "docker_cleanup"
     POSTGRES_BACKUP = "postgres_backup"
     CREATE_SWAP = "create_swap"
@@ -201,6 +203,108 @@ class DockerPruneResult(BaseModel):
     deleted_images: list[str] = Field(default_factory=list)
     deleted_build_cache_objects: list[str] = Field(default_factory=list)
     disk_space_reclaimed: str = "0B"
+
+
+class Overlay2FindingState(StrEnum):
+    """Состояние физического объекта Docker overlay2 после анализа."""
+
+    LIVE = "LIVE"
+    REFERENCED = "REFERENCED"
+    TEMPORARY = "TEMPORARY"
+    SUSPECTED_ORPHAN = "SUSPECTED_ORPHAN"
+    CONFIRMED_ORPHAN = "CONFIRMED_ORPHAN"
+    UNKNOWN = "UNKNOWN"
+
+
+class Overlay2Confidence(StrEnum):
+    """Уровень уверенности в классификации объекта overlay2."""
+
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+    NONE = "NONE"
+
+
+class Overlay2SourceStatus(BaseModel):
+    """Результат проверки одного источника данных для safety-анализа."""
+
+    name: str
+    ok: bool
+    detail: str
+
+
+class Overlay2Fingerprint(BaseModel):
+    """Отпечаток дерева директории overlay2, полученный без перехода по ссылкам."""
+
+    device: int
+    inode: int
+    mode: int
+    size_bytes: int = Field(ge=0)
+    mtime_ns: int = Field(ge=0)
+    entries: int = Field(ge=0)
+
+
+class Overlay2Finding(BaseModel):
+    """Компактное описание одного значимого физического объекта overlay2."""
+
+    object_type: str
+    object_id: str
+    path: str
+    size_bytes: int = Field(ge=0)
+    age_seconds: float = Field(ge=0)
+    state: Overlay2FindingState
+    confidence: Overlay2Confidence = Overlay2Confidence.NONE
+    reason: str
+    checks: dict[str, bool] = Field(default_factory=dict)
+    fingerprint: Overlay2Fingerprint | None = None
+    cleanup_method: str | None = None
+
+
+class Overlay2Summary(BaseModel):
+    """Объёмы объектов overlay2 по классификации и объём возможной очистки."""
+
+    live_bytes: int = Field(default=0, ge=0)
+    referenced_bytes: int = Field(default=0, ge=0)
+    temporary_bytes: int = Field(default=0, ge=0)
+    suspected_orphan_bytes: int = Field(default=0, ge=0)
+    confirmed_orphan_bytes: int = Field(default=0, ge=0)
+    unknown_bytes: int = Field(default=0, ge=0)
+    potentially_reclaimable_bytes: int = Field(default=0, ge=0)
+
+
+class Overlay2Report(BaseModel):
+    """Общий компактный отчёт удалённого анализа Docker overlay2."""
+
+    backend: Literal["docker-overlay2"] = "docker-overlay2"
+    docker_root: str | None = None
+    overlay2_root: str | None = None
+    disk_usage_bytes: int = Field(default=0, ge=0)
+    inventory: dict[str, int] = Field(default_factory=dict)
+    sources: list[Overlay2SourceStatus] = Field(default_factory=list)
+    unsafe: bool = False
+    summary: Overlay2Summary = Field(default_factory=Overlay2Summary)
+    findings: list[Overlay2Finding] = Field(default_factory=list)
+    omitted_findings_count: int = Field(default=0, ge=0)
+
+
+class Overlay2AnalyzeResult(Overlay2Report):
+    """Отчёт read-only действия `overlay2_analyze`."""
+
+
+class Overlay2CleanupRecord(BaseModel):
+    """Итог обработки одного подтверждённого orphan-объекта."""
+
+    path: str
+    result: str
+    method: str
+
+
+class Overlay2CleanupResult(Overlay2Report):
+    """Отчёт действия `overlay2_cleanup` с планом и результатами мутаций."""
+
+    operation_plan: list[Overlay2Finding] = Field(default_factory=list)
+    operations: list[Overlay2CleanupRecord] = Field(default_factory=list)
+    freed_bytes: int = Field(default=0, ge=0)
 
 
 class RegisterHostRequest(BaseModel):

@@ -12,6 +12,11 @@
 
 - **Site Check** — проверяет сайт, указанный в `site_url` хоста: HTTP, TLS,
   `robots.txt` и `sitemap.xml`; SSH-подключение для этого действия не требуется;
+- **Overlay2 Analyze** *(экспериментальное)* — анализирует
+  физические директории Docker `overlay2`, показывает используемые, временные и
+  потенциально висячие слои;
+- **Overlay2 Cleanup** *(экспериментальное)* — повторно анализирует `overlay2` и
+  удаляет выявленные висячие слои;
 - **Docker Cleanup** — остановка и удаление контейнеров, prune volumes, networks,
   images и build cache; в отчёте — списки удалённых объектов и освобождённое место;
 - **Postgres Backup** — dump баз из запущенных контейнеров PostgreSQL на хосте;
@@ -104,7 +109,8 @@ Caddy слушает 80 и 443 и получает сертификат Let's En
 - `DELETE /api/hosts/{host_id}` — скрыть хост из рабочих списков, сохранив историю Tasks.
 - `POST /api/command` — выполнить SSH-действие на хосте
   Тело: `{ "host_id": 1, "command": "docker_cleanup" }`
-  Команды: `docker_cleanup`, `postgres_backup`, `create_swap`, `logs_cleanup`, `ports`
+  Команды: `overlay2_analyze`, `overlay2_cleanup`, `docker_cleanup`,
+  `postgres_backup`, `create_swap`, `logs_cleanup`, `ports`
 
 ### Фоновые операции
 

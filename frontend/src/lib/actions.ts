@@ -4,6 +4,7 @@ export interface ActionDefinition {
   command: Command
   title: string
   description: string
+  experimental?: boolean
 }
 
 export const actions: ActionDefinition[] = [
@@ -11,6 +12,18 @@ export const actions: ActionDefinition[] = [
     command: "site_check",
     title: "Site Check",
     description: "Проверяет доступность сайта, HTTPS-сертификат, robots.txt и sitemap.xml.",
+  },
+  {
+    command: "overlay2_analyze",
+    title: "Overlay2 Analyze",
+    description: "Анализирует физические висячие слои Docker overlay2 без изменений на хосте.",
+    experimental: true,
+  },
+  {
+    command: "overlay2_cleanup",
+    title: "Overlay2 Cleanup",
+    description: "Удаляет подтверждённые висячие слои Docker overlay2 после повторной проверки.",
+    experimental: true,
   },
   {
     command: "docker_cleanup",

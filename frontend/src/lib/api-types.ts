@@ -19,6 +19,8 @@ export type TaskStatus =
 
 export type Command =
   | "site_check"
+  | "overlay2_analyze"
+  | "overlay2_cleanup"
   | "docker_cleanup"
   | "postgres_backup"
   | "create_swap"
@@ -183,4 +185,78 @@ export interface CheckResult {
   ssl: SslCheckResult | null
   robots: RobotsCheckResult | null
   sitemap: SitemapCheckResult | null
+}
+
+export type Overlay2FindingState =
+  | "LIVE"
+  | "REFERENCED"
+  | "TEMPORARY"
+  | "SUSPECTED_ORPHAN"
+  | "CONFIRMED_ORPHAN"
+  | "UNKNOWN"
+
+export type Overlay2Confidence = "HIGH" | "MEDIUM" | "LOW" | "NONE"
+
+export interface Overlay2Fingerprint {
+  device: number
+  inode: number
+  mode: number
+  size_bytes: number
+  mtime_ns: number
+  entries: number
+}
+
+export interface Overlay2SourceStatus {
+  name: string
+  ok: boolean
+  detail: string
+}
+
+export interface Overlay2Finding {
+  object_type: string
+  object_id: string
+  path: string
+  size_bytes: number
+  age_seconds: number
+  state: Overlay2FindingState
+  confidence: Overlay2Confidence
+  reason: string
+  checks: Record<string, boolean>
+  fingerprint: Overlay2Fingerprint | null
+  cleanup_method: string | null
+}
+
+export interface Overlay2Summary {
+  live_bytes: number
+  referenced_bytes: number
+  temporary_bytes: number
+  suspected_orphan_bytes: number
+  confirmed_orphan_bytes: number
+  unknown_bytes: number
+  potentially_reclaimable_bytes: number
+}
+
+export interface Overlay2AnalyzeResult {
+  backend: "docker-overlay2"
+  docker_root: string | null
+  overlay2_root: string | null
+  disk_usage_bytes: number
+  inventory: Record<string, number>
+  sources: Overlay2SourceStatus[]
+  unsafe: boolean
+  summary: Overlay2Summary
+  findings: Overlay2Finding[]
+  omitted_findings_count: number
+}
+
+export interface Overlay2CleanupRecord {
+  path: string
+  result: string
+  method: string
+}
+
+export interface Overlay2CleanupResult extends Overlay2AnalyzeResult {
+  operation_plan: Overlay2Finding[]
+  operations: Overlay2CleanupRecord[]
+  freed_bytes: number
 }
