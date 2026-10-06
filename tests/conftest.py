@@ -103,8 +103,10 @@ async def ssh_conn() -> AsyncIterator[SSHClientConnection]:
             raise RuntimeError(f"SSH вошёл как {whoami}, ожидался {SSH_USER}")
         yield conn
     finally:
-        if conn is not None:
-            conn.close()
-            await conn.wait_closed()
-        if started:
-            await _docker("rm", "-f", container_name)
+        try:
+            if conn is not None:
+                conn.close()
+                await conn.wait_closed()
+        finally:
+            if started:
+                await _docker("rm", "-f", container_name)

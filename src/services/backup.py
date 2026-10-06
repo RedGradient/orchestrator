@@ -1,5 +1,6 @@
 import shlex
 import uuid
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -84,11 +85,18 @@ async def create_postgres_dump(
         f"> {shlex.quote(remote_path)}"
     )
 
-    await run_command(
-        conn,
-        command,
-        error=(f"Can not make dump of database {database_name} from {container_name}"),
-    )
+    try:
+        await run_command(
+            conn,
+            command,
+            error=(f"Can not make dump of database {database_name} from {container_name}"),
+        )
+    except Exception:
+        # Перенаправление stdout создаёт пустой файл ещё до ошибки pg_dump.
+        # Не заменяем исходную ошибку ошибкой best-effort очистки.
+        with suppress(Exception):
+            await remove_remote_file(conn, remote_path)
+        raise
 
     return remote_path
 
