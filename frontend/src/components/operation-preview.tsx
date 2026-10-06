@@ -91,7 +91,12 @@ export function OperationPreview({ hosts, actions, isCreating, error, onCreate }
                       ) : null}
                     </td>
                     <td className="px-4 py-3 sm:px-5">
-                      <span className="block font-medium">{action.title}</span>
+                      <span className="block font-medium">
+                        {action.title}
+                        {action.experimental ? (
+                          <span className="ml-1.5 font-normal text-muted-foreground">(экспериментальное)</span>
+                        ) : null}
+                      </span>
                       <code className="mt-0.5 block text-xs text-muted-foreground">
                         {action.command}
                       </code>

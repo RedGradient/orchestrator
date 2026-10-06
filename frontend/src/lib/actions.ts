@@ -4,6 +4,7 @@ export interface ActionDefinition {
   command: Command
   title: string
   description: string
+  experimental?: boolean
 }
 
 export const actions: ActionDefinition[] = [
@@ -15,12 +16,14 @@ export const actions: ActionDefinition[] = [
   {
     command: "overlay2_analyze",
     title: "Overlay2 Analyze",
-    description: "Анализирует физические orphan-слои Docker overlay2 без изменений на хосте.",
+    description: "Анализирует физические висячие слои Docker overlay2 без изменений на хосте.",
+    experimental: true,
   },
   {
     command: "overlay2_cleanup",
     title: "Overlay2 Cleanup",
-    description: "Удаляет только подтверждённые orphan-слои Docker overlay2 после повторной проверки.",
+    description: "Удаляет подтверждённые висячие слои Docker overlay2 после повторной проверки.",
+    experimental: true,
   },
   {
     command: "docker_cleanup",

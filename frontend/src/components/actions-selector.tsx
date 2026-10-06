@@ -89,7 +89,12 @@ export function ActionsSelector({
                   <Icon aria-hidden="true" className="size-4.5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="text-sm font-medium">{action.title}</span>
+                  <span className="text-sm font-medium">
+                    {action.title}
+                    {action.experimental ? (
+                      <span className="ml-1.5 font-normal text-muted-foreground">(экспериментальное)</span>
+                    ) : null}
+                  </span>
                   <span className="mt-1 block text-sm leading-5 text-muted-foreground">
                     {action.description}
                   </span>
